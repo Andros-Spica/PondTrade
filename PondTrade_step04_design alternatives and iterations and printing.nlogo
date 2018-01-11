@@ -33,7 +33,7 @@ to create-map
     if (noiseType = "normal")
     [
       ; adds a random amount from a normal distribution with mean minDistOfLandToCenter
-      set coastThreshold random-normal minDistOfLandToCenter (halfSmallerDimension * coastalNoiseLevel / 100)
+      set coastThreshold random-normal minDistOfLandToCenter noiseRange
     ]
 
     ifelse (distance centralPatch < coastThreshold)
@@ -47,6 +47,11 @@ to create-map
   ]
 
   print "done."
+
+end
+
+to smooth-coast-line
+
   print "Smoothing..."
 
   ; smooth coast line
@@ -74,7 +79,6 @@ to create-map
     ]
   ]
   print "done."
-  print "Map created!"
 
 end
 @#$#@#$#@
@@ -155,7 +159,7 @@ HORIZONTAL
 SLIDER
 16
 205
-213
+255
 238
 coastLineSmoothThreshold
 coastLineSmoothThreshold
@@ -164,7 +168,7 @@ coastLineSmoothThreshold
 5
 1
 1
-NIL
+of 8 neighbors
 HORIZONTAL
 
 CHOOSER
@@ -191,6 +195,33 @@ smoothIterations
 1
 NIL
 HORIZONTAL
+
+TEXTBOX
+19
+294
+190
+437
+Decrease the run speed (the slider in the top menu of the 'Interface' tab) to observe the result of each of the steps in creating the map.
+14
+0.0
+1
+
+BUTTON
+121
+13
+249
+46
+Smooth coast line
+smooth-coast-line
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?

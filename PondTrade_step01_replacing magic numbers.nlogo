@@ -1,12 +1,23 @@
 to create-map
 
   ; find central patch, depending on the size of dimensions
-  let centralPatch patch (min-pxcor + (floor world-width / 2)) (min-pycor + (floor world-height / 2))
+  let centralPatch
+    patch
+    ; position in X
+    (
+      min-pxcor +
+      floor (world-width / 2)
+    )
+    ; position in Y
+    (
+      min-pycor +
+      floor (world-height / 2)
+    )
   print(centralPatch) ; print central patch
 
-  ; find minimun distance of land to the central patch, depending on the size of dimensions
-  let minXDistOfLandToCenter round ((pondSize / 100) * (world-width / 2))
-  let minYDistOfLandToCenter round ((pondSize / 100) * (world-height / 2))
+  ; find minimun distance of land pathes to the central patch, depending on the size of dimensions
+  let minXDistOfLandToCenter round ((pondSize / 100) * (world-width / 2)) ; minimum distance in X
+  let minYDistOfLandToCenter round ((pondSize / 100) * (world-height / 2)) ; minimum distance in Y
   let minDistOfLandToCenter min (list minXDistOfLandToCenter minYDistOfLandToCenter)
 
   ask patches [
@@ -59,7 +70,7 @@ pondSize
 pondSize
 0
 100
-68
+80
 1
 1
 % of smallest dimension

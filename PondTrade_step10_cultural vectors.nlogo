@@ -31,9 +31,22 @@ breed [ ships ship ]
 
 globals [ routes ]
 
-settlements-own [ sizeLevel ]
+settlements-own
+[
+  sizeLevel
+  currentNumberOfShips potentialNumberOfShips
+  stock
+  frequencyOverQuality
+  culturalVector
+]
 
-ships-own [ base route destination currentDirection ]
+ships-own
+[
+  isActivated
+  base route destination direction lastPosition
+  cargoValue
+  culturalSample
+]
 
 patches-own
 [
@@ -54,6 +67,7 @@ patches-own
 to setup
 
   clear-all
+  reset-ticks
 
   create-map
 
@@ -105,14 +119,13 @@ to create-map
     [
       set isLand true
     ]
-
   ]
 
   smooth-coast-line
 
   assign-path-cost
 
-  paint-patches
+  ask patches [ paint-terrain ]
 
 end
 
@@ -152,19 +165,16 @@ to assign-path-cost
   [
     ifelse (isLand = false)
     [ set pathCost 1 ] ; arbitrary unit for now
-    [ set pathCost relativePathCostInLand / 100 ] ; defined by parameter in relation to the cost of path in water (i.e., 1)
+    [ set pathCost relativePathCostInLand ] ; defined by parameter in relation to the cost of path in water (i.e., 1)
   ]
 
 end
 
-to paint-patches
+to paint-terrain ; ego = patch
 
-  ask patches
-  [
-    ifelse (isLand = false)
-    [ set pcolor 104 ] ; blue for water
-    [ set pcolor 55 ] ; green for land
-  ]
+  ifelse (isLand = false)
+  [ set pcolor 104 ] ; blue for water
+  [ set pcolor 55 ] ; green for land
 
 end
 
@@ -175,56 +185,57 @@ to create-coastal-settlements
 
   repeat numberOfSettlements
   [
-    ask one-of coastalPatches ; ask a random coastal patch
+    ; ask a random coastal patch without a settlement already
+    ask one-of coastalPatches with [not any? settlements-here]
     [
       sprout-settlements 1 ; creates one "turtle" of breed settlements
       [
-        set sizeLevel 1 + random 10 ; sets a random arbitrary size level for the settlement (between 1 and 10)
+        set sizeLevel 1 ; the size level is initiated at minimum (i.e., 1)
+        set stock 0
+        set frequencyOverQuality random-float 1
+        set culturalVector extract-rgb color
+        ; for now, we represent three continuos cultural traits of settlements
+        ; initialized as the rgb values of the settlement color.
 
-        ; give meaningful display proportional to size
         set shape "circle 2"
-        set size 1 + sizeLevel / 3
       ]
+      ; replace the land path cost with the port pathCost
+      set pathCost relativePathCostInPort
       ; exclude this patch from the pool of coastal patches
       set coastalPatches other coastalPatches
     ]
   ]
 
 end
-
 to create-ships-per-settlement
 
-  ; We create only one ship here to better understand its behaviour
-  ask one-of settlements
+  ask settlements
   [
-    let thisSettlement self
+    let thisSettlement self ; to avoid the confusion of nested agent queries
 
-    hatch-ships 1
+    set potentialNumberOfShips get-potential-number-of-ships
+
+    hatch-ships potentialNumberOfShips ; use the sizeLevel variable as the number of ships based in the settlement
     [
-      set base thisSettlement
-
-      set shape "sailboat side" ; import this shape from the library (Tools > Shape editor > import from library)
-      set color [color] of base
-      set size 3
+      setup-ship thisSettlement
     ]
+
+    set currentNumberOfShips get-current-number-of-ships
   ]
 
-;  ask settlements
-;  [
-;    let thisSettlement self ; to avoid the confusion of nested agent queries
-;    hatch-ships sizeLevel ; use the sizeLevel variable as the number of ships based in the settlement
-;    [
-;      set base thisSettlement
-;
-;      ; give meaningful display related to base
-;      set shape "sailboat side" ; import this shape from the library (Tools > Shape editor > import from library)
-;      set color [color] of base
-;      set size 3
-;
-;      ; place it somewhere in the pond, randomly for now (if not, the command "hatch-breed" will place them in the same patch of the settlement)
-;      move-to one-of patches with [isLand = false]
-;    ]
-;  ]
+end
+
+to setup-ship [ baseSettlement ]
+
+  set base baseSettlement
+  set isActivated true
+
+  ; give meaningful display related to base
+  set shape "sailboat side" ; import this shape from the library (Tools > Shape editor > import from library)
+  set color [color] of base
+  set size 3
+
+  choose-destination
 
 end
 
@@ -242,21 +253,6 @@ to set-routes
     [
       let optimalRoute find-a-path ([patch-here] of thisSettlement) ([patch-here] of self) ; find the optimal route to this settlement
       set routes lput optimalRoute routes ; add the optimal route to the end of the routes list
-
-      ; paint route patches in shades of red depending on route frequency
-      foreach optimalRoute
-      [
-        ask ?
-        [
-          ifelse (pcolor = 104 or pcolor = 55) ; if its the first route crossing the patch
-          [
-            set pcolor 11
-          ]
-          [
-            set pcolor min (list (pcolor + 1) (19)) ; sets a maximum at 19 (the brightest)
-          ]
-        ]
-      ]
     ]
 
     set settlementsWithoutRoutes other settlementsWithoutRoutes
@@ -271,16 +267,80 @@ end
 
 to go
 
-  ask ships
+  tick
+
+  if (ticks = 10000 or count turtles > 500) [ stop ]
+
+  update-ships
+
+  update-settlements
+
+  update-display
+
+end
+
+to update-ships
+
+  let activeShips ships with [isActivated]
+  let shipsInBase activeShips with [is-in-base]
+  let shipsInDestination activeShips with [is-in-destination]
+
+  ; UPDATE LAST POSITION
+  ask activeShips
   [
-    if (patch-here = [patch-here] of base) ; update the destination whenever in the base settlement
+    ; update lastPosition if in a patch centre
+    if ((xcor = [pxcor] of patch-here) and (ycor = [pycor] of patch-here))
     [
-      choose-destination
+      set lastPosition patch-here
     ]
   ]
 
-  ask ships
+  ; UNLOAD
+  ask (turtle-set shipsInBase shipsInDestination) with [cargoValue > 0]
   [
+    ; unload cargo (changes sizeLevel)
+    unload-cargo
+  ]
+
+  ; CHECK if the ship can be sustained when in the base
+  ask shipsInBase
+  [
+    if ([potentialNumberOfShips < currentNumberOfShips] of base)
+    [
+      ; the current number of ships cannot be sustained
+      set isActivated false
+      ; update currentNumberOfShips of base
+      ask base [ set currentNumberOfShips get-current-number-of-ships ]
+    ]
+  ]
+
+  set activeShips ships with [isActivated] ; update active ships
+  set shipsInBase shipsInBase with [isActivated] ; update ships in base
+
+  ; LOAD
+  ask (turtle-set shipsInBase shipsInDestination)
+  [
+    ; load cargo (changes stock)
+    load-cargo
+  ]
+
+  ; CHOOSE DESTINATION
+  ask shipsInBase with [cargoValue > 0]
+  [
+    ; update the destination whenever in the base settlement and there is cargo to transport
+    choose-destination
+  ]
+
+  ; FIND DIRECTION in route
+  ask (turtle-set shipsInBase shipsInDestination)
+  [
+    find-direction
+  ]
+
+  ; MOVE towards the next position in the route
+  ask activeShips with [cargoValue > 0]
+  [
+    ; move following the route when there is cargo to transport
     move-to-destination
   ]
 
@@ -297,54 +357,260 @@ to choose-destination ; ego = ship
   set routesFromBase sort-by [ benefit-cost-of-route ?1 > benefit-cost-of-route ?2 ] routesFromBase
 
   ; print the options available
-  foreach routesFromBase
-  [
-    print "route between:"
-    print [who] of get-origin-and-destination ?
-    print "has the benefit-cost ratio of:"
-    print benefit-cost-of-route ?
-  ]
+;  foreach routesFromBase
+;  [
+;    print "==============================================================="
+;    print "route between:"
+;    print [who] of get-origin-and-destination ?
+;    print "has the benefit-cost ratio of:"
+;    print benefit-cost-of-route ?
+;  ]
+;  print "-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x"
 
   ; select the one with higher benefit/cost ratio
   set route first routesFromBase
-
-  ; mark the most effective route
-  foreach route
-  [
-    ask ? [ set pcolor yellow ]
-  ]
 
   ; get the settlement of destination
   set destination one-of (get-origin-and-destination route) with [who != [who] of ([base] of thisShip)]
 
 end
 
-to move-to-destination ; ego = ship
+to find-direction ; ego = ship
 
   ; find where in the route list is the ship
-  let currentPosition position patch-here route
+  let currentPosition position lastPosition route
 
   ; set direction if in a settlement
   ifelse (currentPosition = 0) ; in the first extreme of the route list
   [
-    set currentDirection 1 ; move in the route list towards larger index numbers
+    ; move in the route list towards larger index numbers
+    set direction 1
   ]
   [
     if (currentPosition = (length route - 1)) ; in the last extreme of the route list
     [
-      set currentDirection -1 ; move in the route list towards smaller index numbers
+      ; move in the route list towards smaller index numbers
+      set direction -1
     ]
   ]
   ; else the ship is in route to either the base or the destination
 
+end
+
+to move-to-destination ; ego = ship
+
+  ; find where in the route list is the ship
+  let currentPosition position lastPosition route
+
   ; move through the route following direction
-  move-to item (currentPosition + currentDirection) route
+  let targetPatch item (currentPosition + direction) route
+  ;move-to targetPatch ; constant travel time (1 patch per tick)
+  facexy ([pxcor] of targetPatch) ([pycor] of targetPatch)
+  forward min (
+    list
+    (1 / [pathCost] of patch-here) ; the maximum distance in a tick in the current patch
+    (distancexy ([pxcor] of targetPatch) ([pycor] of targetPatch)) ; the distance to the target patch
+    )
+
+end
+
+to-report is-in-base ; ego = ship
+
+  report (xcor = [xcor] of base) and (ycor = [ycor] of base) ; if the ship arrived at the centre of the base patch
+
+end
+
+to-report is-in-destination ; ego = ship
+
+  report (xcor = [xcor] of destination) and (ycor = [ycor] of destination) ; if the ship arrived at the centre of the destination patch
+
+end
+
+to unload-cargo ; ego = ship
+
+  let thisShip self
+  let settlementHere one-of settlements-here
+
+  ; unload cargo
+  ask settlementHere [ add-trade-effect thisShip ]
+
+end
+
+to load-cargo ; ego = ship
+
+  let settlementHere one-of settlements-here
+
+  ; load cargo
+  set cargoValue [stock] of settlementHere
+  ask settlementHere [ set stock 0 ] ; empty the settlement stock
+
+  set culturalSample [culturalVector] of settlementHere
+
+end
+
+to update-settlements
+
+  ask settlements
+  [
+    let thisSettlement self
+
+    ; the sizeLevel of settlements decays with a constant rate, up to 1 (minimum)
+    set sizeLevel max (list 1 (sizeLevel * (1 - (settlementSizeDecayRate / 100)) ) )
+    ; production in stock also decays with a constant rate
+    set stock stock * (1 - (stockDecayRate / 100))
+    ; prodution is generated in proportion to sizeLevel, following a constant rate
+    set stock stock + sizeLevel * (productionRate / 100)
+
+    ; determine the current and potential number of ships
+    set currentNumberOfShips get-current-number-of-ships
+    set potentialNumberOfShips get-potential-number-of-ships
+
+    ; conditions favors the creation of new ships
+    if (random-float 1 > currentNumberOfShips / potentialNumberOfShips )
+    [
+      ; create a new ship or activate an old one
+      repeat 1
+      [
+        ifelse (any? ships with [not isActivated])
+        [
+          ask one-of ships with [not isActivated]
+          [
+            setup-ship thisSettlement
+            move-to thisSettlement
+          ]
+        ]
+        [
+          hatch-ships 1
+          [
+            setup-ship thisSettlement
+          ]
+        ]
+      ]
+      set currentNumberOfShips get-current-number-of-ships ; update currentNumberOfShips
+    ]
+  ]
+
+end
+
+to add-trade-effect [ aShip ] ; ego = settlement
+
+  ; cultural transmission ship to port
+  let newCulturalVector []
+  foreach culturalVector
+  [
+    let otherSettlementTrait item (length newCulturalVector) [culturalSample] of aShip
+    let traitChange (otherSettlementTrait - ?) * (traitTransmissionRate / 100)
+    set newCulturalVector lput (? + traitChange) newCulturalVector
+  ]
+;  print (word "========== " self " ============")
+;  print (word "old vector: " culturalVector ", new vector: " newCulturalVector)
+  set culturalVector newCulturalVector
+
+  set sizeLevel sizeLevel + [cargoValue] of aShip
+
+end
+
+
+to-report get-potential-number-of-ships ; ego = settlement
+
+  report (
+    1 +
+    (sizeLevel - 1) * frequencyOverQuality
+    )
+
+end
+
+to-report get-current-number-of-ships ; ego = settlement
+
+  let thisSettlement self
+  report count ships with [isActivated and base = thisSettlement ]
 
 end
 
 to update-display
 
-  ask settlements [ set hidden? not showSettlements ]
+  paint-routes
+  paint-active-routes
+
+  ; scale the size of settlements according to their dynamic free-scaled sizeLevel
+  let maxSettlementSize max [sizeLevel] of settlements
+
+  ask settlements
+  [
+    set hidden? not showSettlements
+    set size 1 + (sizeLevel / maxSettlementSize) * 9
+    set color rgb (item 0 culturalVector) (item 1 culturalVector) (item 2 culturalVector)
+  ]
+
+  ask ships
+  [
+    ifelse (isActivated)
+    [ set hidden? false ]
+    [ set hidden? true ]
+  ]
+
+end
+
+to paint-routes
+
+  ; resets route patches to the terrain color
+  foreach routes
+  [
+    let aRoute ?
+
+    foreach aRoute
+    [
+      ask ? [ paint-terrain ]
+    ]
+  ]
+
+  ; paint route patches in shades of red depending on route frequency
+  foreach routes
+  [
+    let aRoute ?
+
+    foreach aRoute
+    [
+      ask ?
+      [
+        if (showRoutes)
+        [
+          ifelse (pcolor < 11 or pcolor > 19) ; if its the first route crossing the patch
+          [
+            set pcolor 11
+          ]
+          [
+            set pcolor min (list (pcolor + 1) (19)) ; sets a maximum at 19 (the brightest)
+          ]
+        ]
+      ]
+    ]
+  ]
+
+end
+
+to paint-active-routes
+
+  ask ships
+  [
+    foreach route
+    [
+      ask ?
+      [
+        ifelse (showActiveRoutes)
+        [
+          set pcolor yellow
+        ]
+        [
+          if (not showRoutes) ; if not displaying all routes
+          [
+            ; resets to the patch terrain color
+            paint-terrain
+          ]
+        ]
+      ]
+    ]
+  ]
 
 end
 
@@ -398,8 +664,8 @@ to-report benefit-cost-of-route [ aRoute ] ; accepts a route and returns a numbe
   ]
 
   let originAndDestination get-origin-and-destination aRoute
-  let benefit 1
-  ask originAndDestination [ set benefit benefit * sizeLevel ] ; the benefit is multiplied by the sizeLevel of the two settlements
+  let benefit 0
+  ask originAndDestination [ set benefit benefit + sizeLevel ] ; the benefit is the sum of the sizeLevel of the two settlements
 
   report benefit / cost
 
@@ -427,7 +693,7 @@ to-report find-a-path [ source-patch destination-patch]
   let closed [] ;-------------------------------*
 
   ;-------------------------------*
-  ask patches with [ isLand = false ]
+  ask patches with [ f != 0 ]
   [
     set f 0
     set h 0
@@ -530,11 +796,11 @@ end
 GRAPHICS-WINDOW
 292
 16
-807
-552
-50
-50
-5.0
+790
+535
+30
+30
+8.0
 1
 10
 1
@@ -544,10 +810,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--50
-50
--50
-50
+-30
+30
+-30
+30
 0
 0
 1
@@ -555,10 +821,10 @@ ticks
 30.0
 
 SLIDER
-13
-322
-248
-355
+12
+465
+247
+498
 pondSize
 pondSize
 0
@@ -570,10 +836,10 @@ pondSize
 HORIZONTAL
 
 SLIDER
-14
-422
-254
-455
+12
+545
+252
+578
 coastalNoiseLevel
 coastalNoiseLevel
 0
@@ -585,10 +851,10 @@ coastalNoiseLevel
 HORIZONTAL
 
 SLIDER
-15
-467
-212
-500
+12
+580
+278
+613
 coastLineSmoothThreshold
 coastLineSmoothThreshold
 0
@@ -596,24 +862,24 @@ coastLineSmoothThreshold
 5
 1
 1
-NIL
+of 8 neighbors
 HORIZONTAL
 
 CHOOSER
-13
-366
-151
-411
+12
+499
+150
+544
 noiseType
 noiseType
 "no noise" "uniform" "normal"
 2
 
 SLIDER
-17
-511
-189
-544
+12
+614
+184
+647
 smoothIterations
 smoothIterations
 0
@@ -625,25 +891,25 @@ NIL
 HORIZONTAL
 
 SLIDER
-24
 62
-196
-95
+70
+234
+103
 numberOfSettlements
 numberOfSettlements
 0
-30
-10
+50
+6
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-25
-13
-92
-46
+11
+15
+78
+48
 Set up
 setup
 NIL
@@ -657,10 +923,10 @@ NIL
 1
 
 SWITCH
-33
-103
-187
-136
+13
+374
+143
+407
 showSettlements
 showSettlements
 0
@@ -668,10 +934,10 @@ showSettlements
 -1000
 
 BUTTON
-98
-13
-211
-46
+157
+362
+251
+395
 Update display
 update-display
 NIL
@@ -685,35 +951,35 @@ NIL
 1
 
 TEXTBOX
-18
-293
-168
-311
+13
+444
+163
+462
 Map parameters
 14
 0.0
 1
 
 SLIDER
-6
-245
-280
-278
+9
+110
+285
+143
 relativePathCostInLand
 relativePathCostInLand
 0
-1000
-1000
+100
+50
+0.01
 1
-1
-% of path cost in water
+X path cost in water
 HORIZONTAL
 
 BUTTON
-218
-13
-281
-46
+96
+16
+159
+49
 Go
 go
 NIL
@@ -727,10 +993,10 @@ NIL
 1
 
 BUTTON
-108
-148
-171
-181
+180
+16
+243
+49
 Go
 go
 T
@@ -744,14 +1010,185 @@ NIL
 1
 
 TEXTBOX
-52
-187
-253
-229
-After pressing 'Set up', select a lower run velocity and press this button to observe the ship movement.
-11
+15
+352
+165
+370
+Display options
+14
 0.0
 1
+
+SWITCH
+13
+407
+120
+440
+showRoutes
+showRoutes
+1
+1
+-1000
+
+SLIDER
+12
+184
+283
+217
+settlementSizeDecayRate
+settlementSizeDecayRate
+0
+25
+5
+0.01
+1
+% of sizeLevel
+HORIZONTAL
+
+SWITCH
+120
+407
+260
+440
+showActiveRoutes
+showActiveRoutes
+0
+1
+-1000
+
+PLOT
+818
+273
+1289
+393
+Settlement size distribution
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"carefully [set-plot-x-range -1 ((max [sizeLevel] of settlements) + 1)] [ set-plot-x-range 0 1 ]\nset-histogram-num-bars 20" "carefully [set-plot-x-range -1 ((max [sizeLevel] of settlements) + 1)] [ set-plot-x-range 0 1 ]\nset-histogram-num-bars 20"
+PENS
+"default" 1.0 1 -16777216 true "histogram [sizeLevel] of settlements" "histogram [sizeLevel] of settlements"
+
+PLOT
+820
+394
+1290
+514
+Main hub settlement
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 2 -16777216 true "" "let hub max-one-of settlements [sizeLevel]\ncarefully [ set-plot-pen-color approximate-rgb (item 0 ([color] of hub)) (item 1 ([color] of hub)) (item 2 ([color] of hub))] []\ncarefully [ plot [who] of hub] [ plot 0 ]"
+
+SLIDER
+12
+292
+283
+325
+traitTransmissionRate
+traitTransmissionRate
+0
+25
+1
+0.01
+1
+% of trait difference
+HORIZONTAL
+
+PLOT
+818
+29
+1290
+149
+Cultural traits
+variants
+frequency
+0.0
+10.0
+0.0
+5.0
+true
+false
+"set-plot-x-range -1 256" "set-plot-x-range -1 256"
+PENS
+"trait 1#" 1.0 1 -2674135 true "set-histogram-num-bars 20" "histogram [item 0 culturalVector] of settlements"
+"trait 2#" 1.0 1 -10899396 true "set-histogram-num-bars 18" "histogram [item 1 culturalVector] of settlements"
+"trait 3#" 1.0 1 -13345367 true "set-histogram-num-bars 15" "histogram [item 2 culturalVector] of settlements"
+
+SLIDER
+9
+144
+285
+177
+relativePathCostInPort
+relativePathCostInPort
+0
+100
+10
+0.01
+1
+X path cost in water
+HORIZONTAL
+
+SLIDER
+12
+217
+283
+250
+stockDecayRate
+stockDecayRate
+0
+25
+5
+0.01
+1
+% of stock
+HORIZONTAL
+
+SLIDER
+12
+250
+283
+283
+productionRate
+productionRate
+0
+25
+5
+0.01
+1
+% of sizeLevel
+HORIZONTAL
+
+PLOT
+818
+151
+1290
+271
+Ships
+ticks
+count
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot count ships with [isActivated]"
 
 @#$#@#$#@
 ## WHAT IS IT?

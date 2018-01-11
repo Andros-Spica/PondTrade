@@ -2,8 +2,8 @@
 ;;; GNU GENERAL PUBLIC LICENSE ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;  The Nomad Frontier model
-;;  Copyright (C) 2016 Andreas Angourakis (andros.spica@gmail.com)
+;;  The PondTrade model
+;;  Copyright (C) 2018 Andreas Angourakis (andros.spica@gmail.com)
 ;;
 ;;  This program is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License as published by
@@ -19,10 +19,23 @@
 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;;;;;;;;;;;;;;;;
+;;; BREEDS ;;;;;;
+;;;;;;;;;;;;;;;;;
+
+breed [ settlements settlement ]
+breed [ ships ship ]
+; agent types (breeds) are created with this structure: 'breed [ name-plural name-singular ]'
+
+;;;;;;;;;;;;;;;;;
 ;;; VARIABLES ;;;
 ;;;;;;;;;;;;;;;;;
 
+settlements-own [ sizeLevel ]
+
+ships-own [ base route destination direction ]
+
 patches-own [ isLand ]
+; just like with patches, custom agent breeds can also have their specific variables
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SETUP ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -30,58 +43,315 @@ patches-own [ isLand ]
 
 to setup
 
+  clear-all
+
   create-map
+
+  create-coastal-settlements
+
+  set-routes
+
+  create-ships-per-settlement
+
+  update-display
 
 end
 
 to create-map
 
-  let centralPatch patch (round (min-pxcor + world-width / 2)) (round (min-pycor + world-height / 2))
-  let minXDistOfLandToCenter round ((landRatio / 100) * (world-width / 2))
-  let minYDistOfLandToCenter round ((landRatio / 100) * (world-height / 2))
-  let minDistOfLandToCenter min (list minXDistOfLandToCenter minYDistOfLandToCenter)
+  let centralPatch patch (min-pxcor + (floor world-width / 2)) (min-pycor + (floor world-height / 2))
 
-  ask patches [
+  let halfSmallerDimension (world-width / 2)
+  if (world-width > world-height) [ set halfSmallerDimension (world-height / 2) ]
 
-    ifelse (distance centralPatch < minDistOfLandToCenter)
+  let minDistOfLandToCenter round ((pondSize / 100) * halfSmallerDimension)
+
+  ask patches
+  [
+
+    let coastThreshold minDistOfLandToCenter ; defaults to the basic value
+
+    ;; add noise to coast line
+    ; set general noise range depending on UI's coastalNoiseLevel and the size of world
+    let noiseRange (halfSmallerDimension * coastalNoiseLevel / 100)
+
+    ; noiseType is specified with the chooser in the UI
+    if (noiseType = "uniform")
+    [
+      ; adds a random amount from a uniform distribution with mean minDistOfLandToCenter
+      set noiseRange (random-float noiseRange) - (noiseRange / 2)
+      set coastThreshold minDistOfLandToCenter + noiseRange
+    ]
+    if (noiseType = "normal")
+    [
+      ; adds a random amount from a normal distribution with mean minDistOfLandToCenter
+      set coastThreshold random-normal minDistOfLandToCenter (halfSmallerDimension * coastalNoiseLevel / 100)
+    ]
+
+    ifelse (distance centralPatch < coastThreshold)
     [
       set isLand false
-      set pcolor 104 ; blue
     ]
     [
       set isLand true
-      set pcolor 55 ; green
     ]
 
   ]
 
+  smooth-coast-line
+
+  paint-patches
+
 end
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; CYCLE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+to smooth-coast-line
+
+  ; smooth coast line
+  repeat smoothIterations
+  [
+    ask patches
+    [
+      ifelse (isLand = false)
+      [
+        ; water patch
+        ; consider ratios instead of absolute numbers to avoid having isolated water bodies adjacent to the world limits (less than 8 neighbors)
+        if (count neighbors with [isLand = true] / count neighbors >= coastLineSmoothThreshold / 8)
+        [
+          ; water patch has a certain number of land neighbors
+          set isLand true ; converted to land
+        ]
+      ]
+      [
+        ; land patch
+        if (count neighbors with [isLand = false] / count neighbors >= coastLineSmoothThreshold / 8)
+        [
+          ; land patch has a certain number of water neighbors
+          set isLand false ; converted to water
+        ]
+      ]
+    ]
+  ]
+
+end
+
+to paint-patches
+
+  ask patches
+  [
+    ifelse (isLand = false)
+    [ set pcolor 104 ] ; blue for water
+    [ set pcolor 55 ] ; green for land
+  ]
+
+end
+
+to create-coastal-settlements
+
+  ; consider only coastal patches
+  let coastalPatches patches with [(isLand = true) and (any? neighbors with [isLand = false])]
+
+  repeat numberOfSettlements
+  [
+    ; ask a random coastal patch without a settlement already
+    ask one-of coastalPatches with [not any? settlements-here]
+    [
+      sprout-settlements 1 ; creates one "turtle" of breed settlements
+      [
+        set sizeLevel 1 + random 10; sets a random arbitrary size level for the settlement (between 1 and 10)
+
+        ; give meaningful display proportional to size
+        set shape "circle 2"
+        set size 1 + sizeLevel / 3
+      ]
+      ; exclude this patch from the pool of coastal patches
+      set coastalPatches other coastalPatches
+    ]
+  ]
+
+end
+
+to create-ships-per-settlement
+
+  ; For now, we create only one ship to better control its behaviour
+  ask one-of settlements
+  [
+    let thisSettlement self
+
+    hatch-ships 1
+    [
+      set base thisSettlement
+
+      set shape "sailboat side" ; import this shape from the library (Tools > Shape editor > import from library)
+      set color [color] of base
+      set size 3
+    ]
+  ]
+
+; the previous code for creating ships can be commented out
+; by adding ';' at the beggining of each line, or
+; by selecting several lines and either selecting 'Edit > Comment' or pressing 'ctrl + ;'.
+;  ask settlements
+;  [
+;    let thisSettlement self ; to avoid the confusion of nested agent queries
+;    hatch-ships round sizeLevel ; use the sizeLevel variable as the number of ships based in the settlement
+;    [
+;      set base thisSettlement
+;
+;      ; give meaningful display related to base
+;      set shape "sailboat side" ; import this shape from the library (Tools > Shape editor > import from library)
+;      set color [color] of base
+;      set size 3
+;
+;      ; place it somewhere in the pond, randomly for now (if not, the command "hatch-breed" will place them in the same patch of the settlement)
+;      move-to one-of patches with [isLand = false]
+;    ]
+;  ]
+
+end
+
+to set-routes
+
+  ask settlements
+  [
+    let aSettlement self
+    ask other settlements
+    [
+      create-link-to aSettlement [ set color yellow set hidden? true]
+    ]
+  ]
+
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; CYCLE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to go
+
+  ask ships
+  [
+    if (patch-here = [patch-here] of base) ; update the destination whenever in the base settlement
+    [
+      choose-destination
+    ]
+  ]
+
+  ask ships
+  [
+    move-to-destination
+  ]
+
+end
+
+to choose-destination ; ego = ship
+
+  let thisShip self
+
+  ; get routes connecting the base settlement
+  let routesFromBase links with [end1 = [base] of thisShip]
+
+  ; print the options available
+  ask routesFromBase
+  [
+    print "==============================================================="
+    print "route between:"
+    print (word end1 end2)
+    print "has the benefit-cost ratio of:"
+    print benefit-cost-of-route
+  ]
+  print "-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x"
+
+  ; select the one with higher benefit/cost ratio
+  set route max-one-of routesFromBase [ benefit-cost-of-route ]
+
+  ; get the settlement of destination
+  set destination [end2] of route
+
+  ; mark the most effective route
+  ask route
+  [
+    set hidden? false
+    ask other routesFromBase
+    [
+      set hidden? true
+    ]
+  ]
+
+end
+
+to move-to-destination ; ego = ship
+
+  ifelse (patch-here = [patch-here] of destination) ; if the ship arrived at destination
+  [
+    face base
+    set direction base
+  ]
+  [
+    if (patch-here = [patch-here] of base) ; if the ship is at the base
+    [
+      face destination
+      set direction destination
+    ]
+  ]
+  ; else the ship is in route to either the base or the destination
+
+  ; find how far is the ship from its current destination (direction)
+  let currentDistance distance direction
+
+  ; move through the route following direction, but not beyond the current destination
+  forward min (list currentDistance 1)
+
+end
+
+to update-display
+
+  ask settlements [ set hidden? not showSettlements ]
+
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Get and set routes (helper 'to-report' procedures) ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to-report get-routes-from-settlement [ aSettlement ] ; accepts a settlement and return a list of routes
+
+  report [link-length] of links with [end1 = aSettlement]
+
+end
+
+to-report benefit-cost-of-route ; ego = link (route)
+
+  ; takes the Euclidean distance between settlements as the proxy of the cost of a route
+  let cost link-length
+
+  ; the benefit is the multiplication of the sizeLevels of the two settlements
+  let benefit ([sizeLevel] of end1) * ([sizeLevel] of end2)
+
+  report benefit / cost
+
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-236
-10
-675
-314
-16
-10
-13.0
+260
+12
+775
+548
+50
+50
+5.0
 1
 10
 1
 1
 1
 0
+0
+0
 1
-1
-1
--16
-16
--10
-10
+-50
+50
+-50
+50
 0
 0
 1
@@ -89,25 +359,95 @@ ticks
 30.0
 
 SLIDER
-14
-60
-221
-93
-landRatio
-landRatio
+13
+322
+248
+355
+pondSize
+pondSize
 0
 100
-50
+75
 1
 1
 % of smallest dimension
 HORIZONTAL
 
+SLIDER
+14
+422
+254
+455
+coastalNoiseLevel
+coastalNoiseLevel
+0
+100
+20
+1
+1
+% of minDistToCentre
+HORIZONTAL
+
+SLIDER
+15
+467
+254
+500
+coastLineSmoothThreshold
+coastLineSmoothThreshold
+0
+8
+5
+1
+1
+of 8 neighbors
+HORIZONTAL
+
+CHOOSER
+13
+366
+151
+411
+noiseType
+noiseType
+"no noise" "uniform" "normal"
+2
+
+SLIDER
+17
+511
+189
+544
+smoothIterations
+smoothIterations
+0
+20
+3
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+41
+96
+213
+129
+numberOfSettlements
+numberOfSettlements
+0
+100
+15
+1
+1
+NIL
+HORIZONTAL
+
 BUTTON
-16
-12
-83
-45
+25
+13
+92
+46
 Set up
 setup
 NIL
@@ -118,6 +458,98 @@ NIL
 NIL
 NIL
 NIL
+1
+
+SWITCH
+43
+210
+197
+243
+showSettlements
+showSettlements
+0
+1
+-1000
+
+BUTTON
+66
+252
+179
+285
+Update display
+update-display
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+18
+293
+168
+311
+Map parameters
+14
+0.0
+1
+
+TEXTBOX
+18
+185
+168
+203
+Display options
+14
+0.0
+1
+
+BUTTON
+130
+12
+193
+45
+Go
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+835
+30
+898
+63
+Go
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+797
+76
+984
+259
+After pressing 'Set up', decrease the run velocity and press 'Go' to observe the ship moving between settlements.\nLook at the terminal (bottom of the 'Interface' tab) to see the result of the code's 'print' statements.
+14
+0.0
 1
 
 @#$#@#$#@
@@ -348,6 +780,22 @@ Polygon -7500403 true true 165 180 165 210 225 180 255 120 210 135
 Polygon -7500403 true true 135 105 90 60 45 45 75 105 135 135
 Polygon -7500403 true true 165 105 165 135 225 105 255 45 210 60
 Polygon -7500403 true true 135 90 120 45 150 15 180 45 165 90
+
+sailboat side
+false
+0
+Line -16777216 false 0 240 120 210
+Polygon -7500403 true true 0 239 270 254 270 269 240 284 225 299 60 299 15 254
+Polygon -1 true false 15 240 30 195 75 120 105 90 105 225
+Polygon -1 true false 135 75 165 180 150 240 255 240 285 225 255 150 210 105
+Line -16777216 false 105 90 120 60
+Line -16777216 false 120 45 120 240
+Line -16777216 false 150 240 120 240
+Line -16777216 false 135 75 120 60
+Polygon -7500403 true true 120 60 75 45 120 30
+Polygon -16777216 false false 105 90 75 120 30 195 15 240 105 225
+Polygon -16777216 false false 135 75 165 180 150 240 255 240 285 225 255 150 210 105
+Polygon -16777216 false false 0 239 60 299 225 299 240 284 270 269 270 254
 
 sheep
 false

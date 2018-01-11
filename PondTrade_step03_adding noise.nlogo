@@ -1,14 +1,19 @@
 to create-map
 
-  ask patches [
+  let centralPatch patch (min-pxcor + floor (world-width / 2)) (min-pycor + floor (world-height / 2))
 
-    ; set central patch
-    let centralPatch patch 0 0
+  let halfSmallerDimension (world-width / 2)
+  if (world-width > world-height) [ set halfSmallerDimension (world-height / 2) ]
 
-    ; set minimum distance to centre depending on world width
-    let minDistOfLandToCentre round (0.5 * (world-width / 2))
+  let minDistOfLandToCenter round ((pondSize / 100) * halfSmallerDimension)
 
-    ifelse (distance centralPatch < minDistOfLandToCentre)
+  ask patches
+  [
+
+    ; add noise to coast line
+    let coastThreshold minDistOfLandToCenter + random-float (halfSmallerDimension * coastalNoiseLevel / 100)
+
+    ifelse (distance centralPatch < coastThreshold)
     [
       set pcolor 104 ; blue for water
     ]
@@ -21,13 +26,13 @@ to create-map
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-141
-16
-580
-476
-16
-16
-13.0
+260
+12
+674
+447
+50
+50
+4.0
 1
 10
 1
@@ -37,21 +42,36 @@ GRAPHICS-WINDOW
 0
 0
 1
--16
-16
--16
-16
+-50
+50
+-50
+50
 0
 0
 1
 ticks
 30.0
 
-BUTTON
-19
-17
-115
+SLIDER
+14
+60
+249
+93
+pondSize
+pondSize
+0
+100
 50
+1
+1
+% of smallest dimension
+HORIZONTAL
+
+BUTTON
+16
+12
+112
+45
 Create map
 create-map
 NIL
@@ -64,12 +84,27 @@ NIL
 NIL
 1
 
-TEXTBOX
-596
+SLIDER
 14
-861
-290
-Right-click on the 'Create map' button and select 'Edit...'\nInside the pop-up window you see the instructions called when the button is clicked. In this case, it is the procedure 'create-map'.\nSelect the 'Code' tab to access the code.
+103
+254
+136
+coastalNoiseLevel
+coastalNoiseLevel
+0
+100
+33
+1
+1
+% of minDistToCentre
+HORIZONTAL
+
+TEXTBOX
+16
+150
+166
+218
+Re-size world dimensions in 'Settings' inside the top menu of the 'Interface' tab.
 14
 0.0
 1

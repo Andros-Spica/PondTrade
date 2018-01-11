@@ -23,6 +23,11 @@
 ;;;;;;;;;;;;;;;;;
 
 patches-own [ isLand ]
+; inside these brackets goes the names of all patches variables.
+; In this case, the only variable is a 'boolean' variable (true/false)
+; indicating whether the patch is a land patch or not.
+; Unlike most programming languages,
+; in NetLogo it is not necessary to declare the type of a variable.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SETUP ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -201,7 +206,7 @@ HORIZONTAL
 SLIDER
 9
 372
-206
+249
 405
 coastLineSmoothThreshold
 coastLineSmoothThreshold
@@ -210,7 +215,7 @@ coastLineSmoothThreshold
 5
 1
 1
-NIL
+of 8 neighbors
 HORIZONTAL
 
 CHOOSER
