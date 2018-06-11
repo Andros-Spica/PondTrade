@@ -15,10 +15,10 @@ to create-map
 
     ifelse (distance centralPatch < coastThreshold)
     [
-      set pcolor 104 ; blue for water
+      set pcolor 106 ; blue for water
     ]
     [
-      set pcolor 55 ; green for land
+      set pcolor 54 ; green for land
     ]
 
   ]

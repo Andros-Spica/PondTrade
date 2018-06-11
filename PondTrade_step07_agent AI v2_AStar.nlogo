@@ -165,8 +165,8 @@ to paint-patches
   ask patches
   [
     ifelse (isLand = false)
-    [ set pcolor 104 ] ; blue for water
-    [ set pcolor 55 ] ; green for land
+    [ set pcolor 106 ] ; blue for water
+    [ set pcolor 54 ] ; green for land
   ]
 
 end
@@ -257,7 +257,7 @@ to set-routes
       [
         ask ?
         [
-          ifelse (pcolor = 104 or pcolor = 55) ; if its the first route crossing the patch
+          ifelse (pcolor = 106 or pcolor = 54) ; if its the first route crossing the patch
           [
             set pcolor 11
           ]
@@ -582,7 +582,7 @@ pondSize
 pondSize
 0
 100
-75
+72
 1
 1
 % of smallest dimension
@@ -652,7 +652,7 @@ numberOfSettlements
 numberOfSettlements
 0
 50
-5
+10
 1
 1
 NIL

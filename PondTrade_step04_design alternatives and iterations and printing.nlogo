@@ -38,10 +38,10 @@ to create-map
 
     ifelse (distance centralPatch < coastThreshold)
     [
-      set pcolor 104 ; blue for water
+      set pcolor 106 ; blue for water
     ]
     [
-      set pcolor 55 ; green for land
+      set pcolor 54 ; green for land
     ]
 
   ]
@@ -59,21 +59,21 @@ to smooth-coast-line
   [
     ask patches
     [
-      ifelse (pcolor = 104)
+      ifelse (pcolor = 106)
       [
         ; water patch
-        if (count neighbors with [pcolor = 55] >= coastLineSmoothThreshold)
+        if (count neighbors with [pcolor = 54] >= coastLineSmoothThreshold)
         [
           ; water patch has a certain number of land neighbors
-          set pcolor 55 ; converted to land
+          set pcolor 54 ; converted to land
         ]
       ]
       [
         ; land patch
-        if (count neighbors with [pcolor = 104] >= coastLineSmoothThreshold)
+        if (count neighbors with [pcolor = 106] >= coastLineSmoothThreshold)
         [
           ; land patch has a certain number of water neighbors
-          set pcolor 104 ; converted to water
+          set pcolor 106 ; converted to water
         ]
       ]
     ]

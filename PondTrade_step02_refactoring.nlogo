@@ -8,16 +8,16 @@ to create-map
 
   let minDistOfLandToCenter round ((pondSize / 100) * halfSmallerDimension)
 
-  ask patches [
-
+  ask patches
+  [
     ifelse (distance centralPatch < minDistOfLandToCenter)
     [
-      set pcolor 104 ; blue for water
+      set pcolor 106 ; blue for water
     ]
     [
-      set pcolor 55 ; green for land
+      set pcolor 54 ; green for land
     ]
-
+    ;;; see "Tools > Color sample" to get the numerical values for different colors and shades
   ]
 
 end

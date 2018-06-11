@@ -160,8 +160,8 @@ end
 to paint-terrain ; ego = patch
 
   ifelse (isLand = false)
-  [ set pcolor 104 ] ; blue for water
-  [ set pcolor 55 ] ; green for land
+  [ set pcolor 106 ] ; blue for water
+  [ set pcolor 54 ] ; green for land
 
 end
 

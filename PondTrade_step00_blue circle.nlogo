@@ -10,10 +10,10 @@ to create-map
 
     ifelse (distance centralPatch < minDistOfLandToCentre)
     [
-      set pcolor 104 ; blue for water
+      set pcolor blue ; water
     ]
     [
-      set pcolor 55 ; green for land
+      set pcolor green ; land
     ]
 
   ]

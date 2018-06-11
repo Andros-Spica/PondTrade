@@ -13,7 +13,7 @@ to create-map
       min-pycor +
       floor (world-height / 2)
     )
-  print(centralPatch) ; print central patch
+  print centralPatch ; print central patch
 
   ; find minimun distance of land pathes to the central patch, depending on the size of dimensions
   let minXDistOfLandToCenter round ((pondSize / 100) * (world-width / 2)) ; minimum distance in X
@@ -24,10 +24,10 @@ to create-map
 
     ifelse (distance centralPatch < minDistOfLandToCenter)
     [
-      set pcolor 104 ; blue for water
+      set pcolor blue ; water
     ]
     [
-      set pcolor 55 ; green for land
+      set pcolor green ; land
     ]
 
   ]
@@ -39,8 +39,8 @@ GRAPHICS-WINDOW
 10
 675
 470
-16
-16
+-1
+-1
 13.0
 1
 10
@@ -51,10 +51,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--16
-16
--16
-16
+0
+32
+0
+32
 0
 0
 1
