@@ -183,6 +183,9 @@ let minXDistOfLandToCenter round 0.5 * (world-width / 2) ; minimum distance in X
 let minYDistOfLandToCenter round 0.5 * (world-height / 2) ; minimum distance in Y
 let minDistOfLandToCenter min (list minXDistOfLandToCenter minYDistOfLandToCenter)
 ```
+| 100x20 | 20x100 |
+| --- | --- |
+| <img src="PondTrade_step01_replacing-magic-numbers-adapt-center_2.png" width="500"> | <img src="PondTrade_step01_replacing-magic-numbers-adapt-center_3.png" width="100"> |
 
 ### Parameterizing
 
@@ -259,7 +262,9 @@ let minDistOfLandToCenter round ((pondSize / 100) * halfSmallerDimension)
 
 ### Colors and shades
 
-Last, we replace the text reference for colors with NetLogo's numerical codes. Using this numeric system allow us to use many shades of any given color. In this case, we are selecting slightly different shades of blue (106) and green (54). You can consult the color codes in "Tools" > "Color Swatches" or in http://ccl.northwestern.edu/netlogo/docs/programming.html#colors.
+Last, we replace the text reference for colors with NetLogo's numerical codes. Using this numeric system allow us to use many shades of any given color. In this case, we are selecting slightly different shades of blue (106) and green (54). You can consult the color codes in "Tools" > "Color Swatches" or in http://ccl.northwestern.edu/netlogo/docs/programming.html#colors:
+
+![](http://ccl.northwestern.edu/netlogo/docs/images/colors.jpg)
 
 ### End result
 
@@ -348,4 +353,4 @@ to create-map
 end
 ```
 
-![Step 3 interface in NetLogo](PondTrade_step02_refactoring-interface.png)
+![Step 3 interface in NetLogo](PondTrade_step03_adding-noise-interface.png)
