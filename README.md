@@ -5,9 +5,11 @@ This is an Agent-based model (ABM) created explicitly for exemplifying several a
 
 >NOTE: In the explanation below I'm using `<UPPERCASE_TEXT>` to express the positions in the code to be filled by the name of entities, variables, and other elements, depending on the context. For instance, `<COLOR> <FRUIT>` would represent many possible phrases, such as "red apple", "brown kiwi", etc. 
 
-## Hello World!
+## NetLogo basics
 
-The code illustrates a single "procedure", called `create-map`, enclosed within a structure of the type:
+### Hello World!
+
+In NetLogo, any action we want to perform must be enclosed within a structure of the type:
 ```NetLogo
 to <PROCEDURE NAME>
   <PROCEDURE_ACTION_1>
@@ -16,22 +18,22 @@ to <PROCEDURE NAME>
   ...
 end
 ```
-Any procedure can be executed by typing `<PROCEDURE_NAME>+Enter` in the NetLogo's console at the bottom of the 'Interface' tab. In this case, the procedure `hello-world`:
+Any procedure can be executed by typing `<PROCEDURE_NAME>` + Enter in the NetLogo's console at the bottom of the 'Interface' tab. The "Hello World" program, a typical minimum exercise when learning a programming language, correspond to the following procedure `hello-world`:
 ```NetLogo
 to hello-world
   print "Hello World!"
 end
 ```
-would generate the following "prints" in the console:
+which generates the following "prints" in the console:
 ```
 observer> hello-world
 Hello World!
 ```
-NetLogo's interface editor allows us to create buttons that can execute one or multiple procedures (or even a snippet of *ad hoc* code). For any doubts on how to edit the interface tab, please refer to NetLogo's documentation (https://ccl.northwestern.edu/netlogo/docs/interfacetab.html).
+NetLogo's interface editor allows us to create buttons that can execute one or multiple procedures (or even a snippet of *ad hoc* code). The interface system is quite straightforward. First, at the top of the interface tab, click "Add" and select a type of element in the drop-down list. Click anywhere in the window below to place it. Select it with click-dragging or using the "Select" option in the right-click pop-up menu. You can edit the element by selecting "Edit", also in the right-click pop-up menu. For any doubts on how to edit the interface tab, please refer to NetLogo's documentation (https://ccl.northwestern.edu/netlogo/docs/interfacetab.html).
 
-## NetLogo's entities
+### NetLogo's entities
 
-The first thing one should learn about NetLogo (and most agent-based modeling system) is that it handles *mainly* two types of entities/agents: `patches`, cells in a square grid, and `turtles`, which are proper "agents" (i.e., able to move). Both entities posses *primitives* (built-in, default properties), some of which can be modified by processes in your model. For example, you can't modify the position of a patch, but you can change its filling color. See NetLogo's documentation on agents for further details (https://ccl.northwestern.edu/netlogo/docs/programming.html#agents).
+The first thing one should learn about NetLogo (and most agent-based modeling system) is that it handles *mainly* two types of entities/agents: `patches`, cells of a square grid, and `turtles`, which are proper "agents" (i.e., mobile, autonomous entities). Both entities have *primitives* (built-in, default properties), some of which can be modified by processes in your model. For example, you can't modify the position of a patch, but you can change its filling color. See NetLogo's documentation on agents for further details (https://ccl.northwestern.edu/netlogo/docs/programming.html#agents).
 
 One should spend some time understanding the grid structure and associated syntaxis. It is recommendable to consult the "settings" pop-up window in the "interface tab":
 
@@ -44,17 +46,24 @@ observador> ask patch -16 0 [ print distance patch 16 0 ]
 ```
 Wrapping one dimension represents a cylindrical surface while wrapping two depicts a strange toroidal object (Donut!). Although this aspect is relatively hidden among the options, it can have great importance if spatial relations play any part in a model. So if you want your grid to represent a geographical map, make sure to untick the wrapping features.
 
+### NetLogo's *dictionary*
+
+One of the most useful resources of NetLogo's documentation is the *dictionary* that can be accessed in the "Help" menu. This is true at any moment throughout your learning curve; even when you know all *primitives* and built-in functions by heart. Moreover, all documentation is present with any copy of NetLogo, so it is fully available offline. 
+
+The dictionary is particularly useful whenever you are learning by example, as in our case. For instance, regarding the earlier mention of `distance`, you could have searched it in the dictionary directly. Whenever you find yourself reading NetLogo code with violet or blue words that you do not understand, take the habit of searching them in NetLogo's *dictionary*.
+
 ## Step 0: Drawing a blue circle
 
 This is the actual initial step in building the **Pond Trade** model. It introduces the student to several fundamental concepts of NetLogo's programming language.
-
+### Procedures
 Inside a single procedure, called `create-map`, the code illustrates how all entities of a type (`patches`) can be ordered (`ask`) to do something using the structure: 
-```
+```NetLogo
 ask <ENTITIES>
 [ 
   <DO_SOMETHING>
 ]
 ```
+### Variables
 The code also introduces the syntaxis to set the values of variables, i.e. `set <VARIABLE> <VALUE>` (in this case, to change color):
 ```NetLogo
 set pcolor blue
@@ -62,7 +71,9 @@ set pcolor blue
 and to declare and set local variables (i.e., accessable only from its own context) by using `let <VARIABLE> <VALUE>`. In this case, for instance, we use a local variable to identify the patch at the postion (0,0) as the one at the center:
 ```NetLogo
 let centralPatch patch 0 0
-``` 
+```
+The fact that the `centralPatch` variable is local and placed inside `ask patches [ <ACTIONS> ]` structure means that we are creating and destroying a different variable for every patch. We connot use these variables (plural intended) outside their enclosing brackets and patches hold no memory of their values before or after this particular action.
+### Commenting code
 Furthermore, we show how to "comment" (i.e., write text that should be ignored when executing the code) using the structure:
 ```NetLogo
 ; <FREE_TEXT>
@@ -71,6 +82,7 @@ or
 ```NetLogo
 <CODE> ; <FREE_TEXT>
 ```
+### Conditional bifurcation: `if` and `ifelse`
 The code exemplifies how to create conditional rules according to predefined general conditions using if/else statements, which in NetLogo can be written as `if` or `ifelse`:
 ```NetLogo
 if (<CONDITION_1_IS_TRUE>)
@@ -96,7 +108,9 @@ ifelse (distance centralPatch < minDistOfLandToCentre)
   set pcolor green ; land
 ]
 ```
+### Expressing equations
 To calculate this condition for every patch, we must set up the arbitrary value `minDistOfLandToCentre`, in this case as the rounded half of the grid width
+### End result
 The whole code is kept short so these aspects can be better observed, investigated, and assimilated:
 ```NetLogo
 to create-map
@@ -126,6 +140,125 @@ end
 
 ## Step 1: Replacing *magic numbers*
 
-This step exemplifies a very typical situation when designing a model and programming in general. Once you defined a procedure in raw terms and tested that it actually does what you expects, you probably want to generalize it. As the aim of modeling is to represent *a type of* phenomenon, its good practice to have all non-dynamic conditions to be isolated as "parameters", special variables that can be set through user input in the interface tab (e.g., slides, selectors, numeric fields).
+This step exemplifies a very typical situation when designing a model and programming in general. Once you defined a procedure in raw terms and tested that it does what you expect, you probably want to generalize it. As the aim of modeling is to represent *a type of* phenomenon, its good practice to have all non-dynamic conditions to be isolated as "parameters", variables that can be set through user input in the interface tab (e.g., slides, selectors, numeric fields).
 
-In Step 0, the code has several fixed arbitrary values (e.g., the coordinates of the `centralPatch`, the calculation of `minDistOfLandToCentre` assuming half of the world width). It is good enough for us to draw a *particular* blue circle, but it is insufficient to draw other *types of blue circle*. Of course, the code will never be able to draw *anything*, if we are not programming it to do it. We must generalize but also compromise, accepting that there will be possibilities that are not covered by our model. 
+In Step 0, the code has several fixed arbitrary values (e.g., the coordinates of the `centralPatch`, the calculation of `minDistOfLandToCentre` assuming half of the world width). It is good enough for us to draw a *particular* blue circle, but it is insufficient to draw other *types of blue circle*. Of course, the code will never be able to draw *anything*, if we are not programming it to do it. For instance, the colors "blue" and "green" are also "magic numbers", but we are hardly interest in having them as parameters. We must generalize but also compromise, accepting that there will be possibilities that are not covered by our model.
+
+### Adaptable "pond"
+One of the fixed values we may want to generalize is the central patch being described as `patch 0 0` and the pond (blue circle) being a circle with a radius of a quarter of the grid width.
+
+First, is there any case where this patch is not the one at the center of the grid? Imagine that you don't like to have negative coordinates in your model. Back in the Step 0, go to "Settings" and modify the "location of origin" to be at the corner. Now, test the `create-map` procedure:
+
+![](PondTrade_step01_replacing-magic-numbers-adapt-center_0.png)
+
+A true mess! Not at all what we are looking for! To correct this behavior, we must calculate the center coordinates, depending on the ranges or sizes of the grid width and height, whatever its configuration. Therefore, we must replace "0" with the calculation "minimum + range / 2" for both x and y coordinates:
+```NetLogo
+let centralPatch patch (min-pxcor + floor (world-width / 2)) (min-pycor + floor (world-height / 2))
+```
+We use the `floor` function to obtain the round lower grid position when the range is an odd number. Because this calculation uses only NetLogo primitives, you can test this by printing it in the console in any NetLogo model. It will return the central patch given your grid settings:
+```NetLogo
+observer> show patch (min-pxcor + floor (world-width / 2)) (min-pycor + floor (world-height / 2))
+observer: (patch 16 16)
+```
+Now, back to Step 0, imagine that you are interested in changing the dimensions of the grid instead. Maybe you want the grid to be not square (e.g., 33x33) but rectangular (e.g., 100x20):
+
+![](PondTrade_step01_replacing-magic-numbers-adapt-center_1.png)
+
+Again, not what we are looking for. We want our pond to be always fully within the grid. To do this, we must modify our calculation of `minDistOfLandToCentre` to account for both width and height. One way of doing it is to calculate the radius for both dimensions and then choose the lowest value.
+```NetLogo
+let minXDistOfLandToCenter round 0.5 * (world-width / 2) ; minimum distance in X
+let minYDistOfLandToCenter round 0.5 * (world-height / 2) ; minimum distance in Y
+let minDistOfLandToCenter min (list minXDistOfLandToCenter minYDistOfLandToCenter)
+```
+### Parameterizing
+After the later changes, we still have two different kinds of "magic numbers". "2" represents the fact that we are drawing a circle which radius is a proportion of *half* of the smaller grid dimension. Although it is possible, we will not replace this value with a parameter. As an exercise, you can imagine the outcome of having different numbers instead of "2".
+
+On the contrary, "0.5" represents the relative size of the pond radius, i.e., the *half* of the *half of the smaller dimension*. Here we have a good candidate for a parameter. It is reasonable to believe that the size of the pond will be relevant to our model's results. Mainly, we expect that larger ponds will make trade slower, assuming a fixed number of settlements, evenly distributed around the pond. In NetLogo, we create a parameter by adding an input element to the interface tab (e.g., slider) and naming it. In this case, we create a parameter called "pondSize" that represents the pond radius as the percentage of the smallest dimension, i.e. varing between 0 and 100. then, we can use it in the code to replace "0.5":
+```NetLogo
+let minXDistOfLandToCenter round ((pondSize / 100) * (world-width / 2)) ; minimum distance in X
+let minYDistOfLandToCenter round ((pondSize / 100) * (world-height / 2)) ; minimum distance in Y
+let minDistOfLandToCenter min (list minXDistOfLandToCenter minYDistOfLandToCenter)
+```
+Note that this parameter could be expressed directly as a proportion varying between 0 and 1. However, I recommend using percentages to format this kind of parameters because they are more intuitive for humans and will be more easily understood by colleagues and the general public with no background in computer science or mathematics.
+
+### End result
+We increased significantly the `create-map` procedure, but we now have a process that is both flexible and controllable by user input. Note that we extract the declaration of the local variables, `centralPatch` and `minDistOfLandToCenter`, from the patches actions. They are now calculated only once at the start of the procedure and then used by every patch. Once you close a version of any piece of code, it is good practice to increase the spacing between the lines or even break down single lines that are particularly complicated. NetLogo language allows much flexibility in this sense: you can add spaces, tabs, line breaks, and commentary between most elements of your code. Also, enclosing parenthesis are not required but may improve readability.
+```NetLogo
+to create-map
+
+  ; find central patch, depending on the size of dimensions
+  let centralPatch
+    patch
+    ; position in X
+    (
+      min-pxcor +
+      floor (world-width / 2)
+    )
+    ; position in Y
+    (
+      min-pycor +
+      floor (world-height / 2)
+    )
+  print(centralPatch) ; print central patch
+
+  ; find minimun distance of land pathes to the central patch, depending on the size of dimensions
+  let minXDistOfLandToCenter round ((pondSize / 100) * (world-width / 2)) ; minimum distance in X
+  let minYDistOfLandToCenter round ((pondSize / 100) * (world-height / 2)) ; minimum distance in Y
+  let minDistOfLandToCenter min (list minXDistOfLandToCenter minYDistOfLandToCenter)
+
+  ask patches [
+
+    ifelse (distance centralPatch < minDistOfLandToCenter)
+    [
+      set pcolor blue ; water
+    ]
+    [
+      set pcolor green ; land
+    ]
+
+  ]
+
+end
+```
+
+## Step 02: Refactoring
+
+Replacing "magic numbers" is part of what is often called "refactoring" in programming. Refactoring encompases all tasks aiming to generalize the code, make it extendable, but also make it cleaner (more readable) and faster. By definition, refactoring means that your code change appearance but still produce the same result. However, there are a trade-off between these three goals. For example, replacing default values with calculations or indirect values will probably increase the time of processing. In practice, this trade-off is not relevant until your model is very complex, very populated (many entities), or must be simulated for many different conditions. I recommend to be always especially attentative with the readability, commentary and documentation of your code. Assuming you are interested in creating models for academic discussion (i.e., science rather than enginering purposes), the priority is to communicate your models to other people.
+
+We downgrade the extensive commentary on the calculation of `centralPatch`. Commenting your code is great but do not get carried away! You must assume that your reader has to know *something* about the programming language. At every step, I will be downgrading most commentaries added in the previous step. 
+
+We also simplify the calculation of `minDistOfLandToCenter`. This new version initializes a local variable `halfSmallerDimension` assuming the smaller dimension is the width. Then, it checks that this is the case, and re-write this value if height is actually smaller. Finally, we calculate `minDistOfLandToCenter` as a proportion of `halfSmallerDimension`. This version is less redundant, uses two instead of three local variables, and expresses more clearly that the condition is the comparison between the grid width and height.
+```NetLogo
+let halfSmallerDimension (world-width / 2)
+if (world-width > world-height) [ set halfSmallerDimension (world-height / 2) ]
+
+let minDistOfLandToCenter round ((pondSize / 100) * halfSmallerDimension)
+```
+
+```NetLogo
+to create-map
+
+  let centralPatch patch (min-pxcor + floor (world-width / 2)) (min-pycor + floor (world-height / 2))
+
+  ; refactor previous code for finding minimun distance to centre
+  let halfSmallerDimension (world-width / 2)
+  if (world-width > world-height) [ set halfSmallerDimension (world-height / 2) ]
+
+  let minDistOfLandToCenter round ((pondSize / 100) * halfSmallerDimension)
+
+  ask patches
+  [
+    ifelse (distance centralPatch < minDistOfLandToCenter)
+    [
+      set pcolor 104 ; blue for water
+    ]
+    [
+      set pcolor 55 ; green for land
+    ]
+    ;;; see "Tools > Color sample" to get the numerical values for different colors and shades
+  ]
+
+end
+```
+
+
