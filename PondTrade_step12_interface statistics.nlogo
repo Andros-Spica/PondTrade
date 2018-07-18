@@ -376,7 +376,7 @@ to choose-destination ; ego = ship
   let routesFromBase get-routes-to-settlement [base] of thisShip
 
   ; order these routes by benefit/cost ratio
-  set routesFromBase sort-by [ benefit-cost-of-route ?1 thisShip > benefit-cost-of-route ?2 thisShip ] routesFromBase
+  set routesFromBase sort-by [ [?1 ?2] -> benefit-cost-of-route ?1 thisShip > benefit-cost-of-route ?2 thisShip ] routesFromBase
 
   ; print the options available
 ;  foreach routesFromBase
@@ -523,10 +523,10 @@ to add-trade-effect [ aShip ] ; ego = settlement
   ; cultural transmission ship to port
   let newCulturalVector []
   foreach culturalVector
-  [
+  [ ?1 ->
     let otherSettlementTrait item (length newCulturalVector) [culturalSample] of aShip
-    let traitChange (otherSettlementTrait - ?) * ((item 9 culturalVector) / 100)
-    set newCulturalVector lput (? + traitChange) newCulturalVector
+    let traitChange (otherSettlementTrait - ?1) * ((item 9 culturalVector) / 100)
+    set newCulturalVector lput (?1 + traitChange) newCulturalVector
   ]
 ;  print (word "========== " self " ============")
 ;  print (word "old vector: " culturalVector ", new vector: " newCulturalVector)
@@ -615,23 +615,23 @@ to paint-routes
 
   ; resets route patches to the terrain color
   foreach routes
-  [
-    let aRoute ?
+  [ ?1 ->
+    let aRoute ?1
 
     foreach aRoute
-    [
-      ask ? [ paint-terrain ]
+    [ ??1 ->
+      ask ??1 [ paint-terrain ]
     ]
   ]
 
   ; paint route patches in shades of red depending on route frequency
   foreach routes
-  [
-    let aRoute ?
+  [ ?1 ->
+    let aRoute ?1
 
     foreach aRoute
-    [
-      ask ?
+    [ ??1 ->
+      ask ??1
       [
         if (showRoutes)
         [
@@ -654,8 +654,8 @@ to paint-active-routes
   ask ships
   [
     foreach route
-    [
-      ask ?
+    [ ?1 ->
+      ask ?1
       [
         ifelse (showActiveRoutes)
         [
@@ -682,16 +682,16 @@ to-report get-route [ settlement1 settlement2 ] ; accepts two settlements and re
 
   ; get routes connecting settlement1
   let routesFromSettlement1 filter
-  [
-    ([one-of settlements-here] of first ? = settlement1) or
-    ([one-of settlements-here] of last ? = settlement1)
+  [ ?1 ->
+    ([one-of settlements-here] of first ?1 = settlement1) or
+    ([one-of settlements-here] of last ?1 = settlement1)
   ] routes
 
   ; get the route connecting settlement2 from the previous list
   let routeFromSettlement1ToSettlement2 filter
-  [
-    ([one-of settlements-here] of first ? = settlement2) or
-    ([one-of settlements-here] of last ? = settlement2)
+  [ ?1 ->
+    ([one-of settlements-here] of first ?1 = settlement2) or
+    ([one-of settlements-here] of last ?1 = settlement2)
   ] routesFromSettlement1
 
   report first routeFromSettlement1ToSettlement2
@@ -701,9 +701,9 @@ end
 to-report get-routes-to-settlement [ aSettlement ] ; accepts a settlement and return a list of routes
 
   report filter
-  [
-    ([one-of settlements-here] of first ? = aSettlement) or
-    ([one-of settlements-here] of last ? = aSettlement)
+  [ ?1 ->
+    ([one-of settlements-here] of first ?1 = aSettlement) or
+    ([one-of settlements-here] of last ?1 = aSettlement)
   ] routes
 
 end
@@ -719,8 +719,8 @@ to-report benefit-cost-of-route [ aRoute aShip ] ; accepts a route andpan return
   let cost 0
 
   foreach aRoute ; for every patch in the given route
-  [
-    set cost cost + get-path-cost ? aShip
+  [ ?1 ->
+    set cost cost + get-path-cost ?1 aShip
   ]
 
   let originAndDestination get-origin-and-destination aRoute
@@ -789,7 +789,7 @@ to-report find-a-path [ source-patch destination-patch]
     ifelse length open != 0
     [
       ; sort the patches in open list in increasing order of their f() values
-      set open sort-by [[f] of ?1 < [f] of ?2] open
+      set open sort-by [ [?1 ?2] -> [f] of ?1 < [f] of ?2 ] open
 
       ; take the first patch in the open list
       ; as the current patch (which is currently being explored (n))
@@ -875,10 +875,10 @@ end
 GRAPHICS-WINDOW
 292
 16
-668
-413
-30
-30
+666
+391
+-1
+-1
 6.0
 1
 10
@@ -908,7 +908,7 @@ pondSize
 pondSize
 0
 100
-75
+75.0
 1
 1
 % of smallest dimension
@@ -923,7 +923,7 @@ coastalNoiseLevel
 coastalNoiseLevel
 0
 100
-20
+20.0
 1
 1
 % of minDistToCentre
@@ -938,7 +938,7 @@ coastLineSmoothThreshold
 coastLineSmoothThreshold
 0
 8
-5
+5.0
 1
 1
 of 8 neighbors
@@ -963,7 +963,7 @@ smoothIterations
 smoothIterations
 0
 20
-3
+3.0
 1
 1
 iterations
@@ -978,7 +978,7 @@ numberOfSettlements
 numberOfSettlements
 0
 50
-30
+30.0
 1
 1
 settlements
@@ -1048,7 +1048,7 @@ relativePathCostInLand
 relativePathCostInLand
 1
 100
-50
+50.0
 0.01
 1
 X path cost in water
@@ -1118,7 +1118,7 @@ maxSettlementSizeDecayRate
 maxSettlementSizeDecayRate
 0
 25
-20
+20.0
 0.01
 1
 % of sizeLevel
@@ -1144,7 +1144,7 @@ maxTraitTransmissionRate
 maxTraitTransmissionRate
 0
 25
-20
+20.0
 0.01
 1
 % of trait difference
@@ -1159,7 +1159,7 @@ relativePathCostInPort
 relativePathCostInPort
 1
 100
-10
+10.0
 0.01
 1
 X path cost in water
@@ -1174,7 +1174,7 @@ maxStockDecayRate
 maxStockDecayRate
 0
 25
-20
+20.0
 0.01
 1
 % of stock
@@ -1189,7 +1189,7 @@ maxProductionRate
 maxProductionRate
 0
 25
-15
+15.0
 0.01
 1
 % of sizeLevel
@@ -1204,7 +1204,7 @@ landTechVariation
 landTechVariation
 0
 20
-5
+5.0
 0.01
 1
 NIL
@@ -1219,7 +1219,7 @@ portTechVariation
 portTechVariation
 0
 20
-5
+5.0
 0.01
 1
 NIL
@@ -1234,7 +1234,7 @@ maxMutationVariation
 maxMutationVariation
 0
 5
-1
+1.0
 0.01
 1
 % of trait range
@@ -1896,7 +1896,7 @@ MONITOR
 967
 452
 mean total path cost of active routes
-mean [sum (map [[pathCost] of ?] route)] of ships
+mean [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of ships
 2
 1
 9
@@ -1917,7 +1917,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "carefully [ plot mean [sum (map [[pathCost] of ?] route)] of ships with [isActivated]] [ ]"
+"default" 1.0 0 -16777216 true "" "carefully [ plot mean [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of ships with [isActivated]] [ ]"
 
 PLOT
 965
@@ -1933,9 +1933,9 @@ frequency
 10.0
 true
 false
-"carefully [set-plot-x-range -0.1 ((max [sum (map [[pathCost] of ?] route)] of ships) + 0.1)] [ set-plot-x-range 0 1 ]\nset-histogram-num-bars 30" "carefully [set-plot-x-range -0.1 ((max [sum (map [[pathCost] of ?] route)] of ships) + 0.1)] [ set-plot-x-range 0 1 ]\nset-histogram-num-bars 30"
+"carefully [set-plot-x-range -0.1 ((max [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of ships) + 0.1)] [ set-plot-x-range 0 1 ]\nset-histogram-num-bars 30" "carefully [set-plot-x-range -0.1 ((max [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of ships) + 0.1)] [ set-plot-x-range 0 1 ]\nset-histogram-num-bars 30"
 PENS
-"default" 1.0 1 -16777216 true "" "histogram [sum (map [[pathCost] of ?] route)] of ships"
+"default" 1.0 1 -16777216 true "" "histogram [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of ships"
 
 MONITOR
 210
@@ -2062,7 +2062,7 @@ INPUTBOX
 70
 70
 seed
-12345
+12345.0
 1
 0
 Number
@@ -2424,9 +2424,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3.1
+NetLogo 6.0.4
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -2442,7 +2441,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 1
 @#$#@#$#@
