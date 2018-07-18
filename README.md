@@ -76,7 +76,7 @@ and to declare and set local variables (i.e., accessable only from its own conte
 ```NetLogo
 let centralPatch patch 0 0
 ```
-The fact that the `centralPatch` variable is local and placed inside `ask patches [ <ACTIONS> ]` structure means that we are creating and destroying a different variable for every patch. We connot use these variables (plural intended) outside their enclosing brackets and patches hold no memory of their values before or after this particular action.
+The fact that the `centralPatch` variable is local and placed inside `ask patches [ <ACTIONS> ]` structure means that we are creating and destroying a different variable for every patch. We cannot use these variables (plural intended) outside their enclosing brackets and patches hold no memory of their values before or after this particular action.
 
 ### Commenting code
 
@@ -246,7 +246,7 @@ end
 
 Replacing "magic numbers" is part of what is often called "refactoring" in programming. Refactoring encompases all tasks aiming to generalize the code, make it extendable, but also make it cleaner (more readable) and faster. By definition, refactoring means that your code change appearance but still produce the same result. However, there are a trade-off between these three goals. For example, replacing default values with calculations or indirect values will probably increase the time of processing. In practice, this trade-off is not relevant until your model is very complex, very populated (many entities), or must be simulated for many different conditions. I recommend to be always especially attentative with the readability, commentary and documentation of your code. Assuming you are interested in creating models for academic discussion (i.e., science rather than enginering purposes), the priority is to communicate your models to other people.
 
-### Pacing coments
+### Pacing comments
 
 We downgrade the extensive commentary on the calculation of `centralPatch`. Commenting your code is great but do not get carried away! You must assume that your reader has to know *something* about the programming language. At every step, I will be downgrading most commentaries added in the previous step.
 
