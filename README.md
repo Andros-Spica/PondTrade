@@ -1,7 +1,7 @@
 # PondTrade
 Didactic progressive development of an Agent-based model in NetLogo
 
-This is an Agent-based model (ABM) created explicitly for exemplifying several aspects of the development of ABM models. The target public is students and researchers of Archaeology and History. The development process is broken down into several steps that are progressively complex. Each version introduces a new concept and some NetLogo functionalities.
+This is an Agent-based model (ABM) created explicitly for exemplifying several aspects of the development of ABM models. The target public is students and researchers of Archaeology and History. The development process is broken down into several steps that are progressively complex, each introducing a new concepts and NetLogo functionalities. Each step corresponds to a "`.nlogo`" file included in this repository. Although "`.nlogo`" files should be opened in NetLogo in order to run our code, it can also be opened and edited in any text editor.
 
 >NOTE: In the explanation below I'm using `<UPPERCASE_TEXT>` to express the positions in the code to be filled by the name of entities, variables, and other elements, depending on the context. For instance, `<COLOR> <FRUIT>` would represent many possible phrases, such as "red apple", "brown kiwi", etc. 
 
@@ -34,6 +34,8 @@ NetLogo's interface editor allows us to create buttons that can execute one or m
 ### NetLogo's entities
 
 The first thing one should learn about NetLogo (and most agent-based modeling system) is that it handles *mainly* two types of entities/agents: `patches`, cells of a square grid, and `turtles`, which are proper "agents" (i.e., mobile, autonomous entities). Both entities have *primitives* (built-in, default properties), some of which can be modified by processes in your model. For example, you can't modify the position of a patch, but you can change its filling color. See NetLogo's documentation on agents for further details (https://ccl.northwestern.edu/netlogo/docs/programming.html#agents).
+
+### Grid
 
 One should spend some time understanding the grid structure and associated syntaxis. It is recommendable to consult the "settings" pop-up window in the "interface tab":
 
@@ -189,7 +191,7 @@ let minDistOfLandToCenter min (list minXDistOfLandToCenter minYDistOfLandToCente
 
 ### Parameterizing
 
-After the later changes, we still have two different kinds of "magic numbers". "2" represents the fact that we are drawing a circle which radius is a proportion of *half* of the smaller grid dimension. Although it is possible, we will not replace this value with a parameter. As an exercise, you can imagine the outcome of having different numbers instead of "2".
+After the later changes, we still have two different kinds of "magic numbers". "2" represents the fact that we are drawing a circle whose radius is a proportion of *half* of the smaller grid dimension. Although it is possible, we will not replace this value with a parameter. As an exercise, you can imagine the outcome of having different numbers instead of "2".
 
 On the contrary, "0.5" represents the relative size of the pond radius, i.e., the *half* of the *half of the smaller dimension*. Here we have a good candidate for a parameter. It is reasonable to believe that the size of the pond will be relevant to our model's results. Mainly, we expect that larger ponds will make trade slower, assuming a fixed number of settlements, evenly distributed around the pond. In NetLogo, we create a parameter by adding an input element to the interface tab (e.g., slider) and naming it. In this case, we create a parameter called "pondSize" that represents the pond radius as the percentage of the smallest dimension, i.e. varing between 0 and 100. then, we can use it in the code to replace "0.5":
 ```NetLogo
@@ -201,7 +203,7 @@ Note that this parameter could be expressed directly as a proportion varying bet
 
 ### End result
 
-We increased significantly the `create-map` procedure, but we now have a process that is both flexible and controllable by user input. Note that we extract the declaration of the local variables, `centralPatch` and `minDistOfLandToCenter`, from the patches actions. They are now calculated only once at the start of the procedure and then used by every patch. Once you close a version of any piece of code, it is good practice to increase the spacing between the lines or even break down single lines that are particularly complicated. NetLogo language allows much flexibility in this sense: you can add spaces, tabs, line breaks, and commentary between most elements of your code. Also, enclosing parenthesis are not required but may improve readability.
+We increased significantly the `create-map` procedure, but we now have a process that is both flexible and controllable by user input. Note that we extract the declaration of the local variables, `centralPatch` and `minDistOfLandToCenter`, from the patches commands. They are now calculated only once at the start of the procedure and then used by every patch. Once you close a version of any piece of code, it is good practice to increase the spacing between the lines or even break down single lines that are particularly complicated. NetLogo language allows much flexibility in this sense: you can add spaces, tabs, line breaks, and commentary between most elements of your code. Also, enclosing parenthesis are not required but may improve readability.
 ```NetLogo
 to create-map
 
@@ -244,7 +246,7 @@ end
 
 ## Step 02: Refactoring
 
-Replacing "magic numbers" is part of what is often called "refactoring" in programming. Refactoring encompases all tasks aiming to generalize the code, make it extendable, but also make it cleaner (more readable) and faster. By definition, refactoring means that your code change appearance but still produce the same result. However, there are a trade-off between these three goals. For example, replacing default values with calculations or indirect values will probably increase the time of processing. In practice, this trade-off is not relevant until your model is very complex, very populated (many entities), or must be simulated for many different conditions. I recommend to be always especially attentative with the readability, commentary and documentation of your code. Assuming you are interested in creating models for academic discussion (i.e., science rather than enginering purposes), the priority is to communicate your models to other people.
+Replacing "magic numbers" is part of what is often called "refactoring" in programming. By definition, refactoring means that your code change appearance but still produce the same result. Refactoring encompases all tasks aiming to generalize the code, make it extendable, but also make it cleaner (more readable) and faster. However, there are a trade-off between these three goals. For example, replacing default values with calculations or indirect values will probably increase the time of processing. In practice, this trade-off is not relevant until your model is very complex, very populated (many entities), or must be simulated for many different conditions. I recommend to be always especially attentative with the readability, commentary and documentation of your code. Assuming you are interested in creating models for academic discussion (i.e., science rather than enginering purposes), the priority is to communicate your models to other people.
 
 ### Pacing comments
 
@@ -298,15 +300,15 @@ end
 
 ## Step 03: Adding noise (*stochasticity*)
 
-One of the most important characteristics of an agent-based model is stochasticity. This means that at least some of the processes are feed by random sequences. Methodologically, introducing randomness is a way of accounting for the entire spectrum of possibilities whenever a certain aspect of the model is undertheorized or cannot be controled in real scenarios. More importantly, it is justified whenever the modeler believes that the intended behavior is independent of a specific value or order. For those with no previous experience with computer science: note that "random" for a computer is not realy like "rolling dices". We are in fact getting values of a preordered sequence that is presumbly unrelated to the process at hand. The programs creating these sequences are called "random number generators".
+One of the most important characteristics of an agent-based model is stochasticity. This means that at least some of the processes are feed by random sequences. Methodologically, introducing randomness is a way of accounting for the entire spectrum of possibilities whenever a certain aspect of the model is undertheorized or cannot be controled in real scenarios. More importantly, it is justified whenever the modeler believes that the intended behavior is independent of a specific value or order. For those with no previous experience with computer science: note that "random" for a computer is not realy like "rolling dices". We are in fact getting values of a preordered sequence that is presumbly unrelated to the process at hand. The programs creating these sequences are called "random number generators" (RNG). Sequences will be different every time we run our program (*i.e.* simulation), unless we preset the RNG using a specific 'seed' (see http://ccl.northwestern.edu/netlogo/docs/dict/random-seed.html).
 
-Stochasticity is intrinsic in NetLogo. We were already dealing with random processes since step 0, when asking patches to paint themselves. You probably did not realize, but the command `ask patches` demands that patches are ordered somehow. Think as if you were told to ask all your friends to have a look at your new model. Well, but who exactly are you going to ask first? NetLogo solves this dilemma automaticaly by randomizing the order of "asking". As an exercise, you can open the step 0 model, reduce the velocity of simulation (top of the interface tab), and execute the `create-map` procedure. You will observe each patch changing color, one at a time.
+Stochasticity is intrinsic in NetLogo. We were already dealing with random processes since step 0, when asking patches to paint themselves. You probably did not realize, but the command `ask patches` demands that patches are ordered somehow. Think as if you were told to ask all your friends to have a look at your new model. Well, but who exactly are you going to ask first? NetLogo solves this dilemma automaticaly by randomizing the order of "asking". As an exercise, you can open the step 0 model, reduce the velocity of simulation (top of the interface tab), and execute the `create-map` procedure. You will observe each patch changing color, one at a time. This is also a nice example of using stochasticity to to assure that an aggregated outcome (*i.e.* blue circle) is not a mere artefact of any particular schedulle of processes (*i.e.* the order in which patches change colors).
 
-But is it so important to have a random order? In the cases of step 0 through step 2, it is completely irrelevant. Our goal was to draw a blue circle; it does not matter which patch assumes the role of land or water first. However, this will became increasingly relevant as we advance in creating a proper agent-based model.
+But is it so important to have a random order? In the cases of step 0 through step 2, it is completely irrelevant. Our goal was to draw a blue circle; it does not matter which patch assumes the role of land or water first. However, this will became increasingly relevant as we advance in creating a proper agent-based model, because *agents' states DO normally depend on other agents' states*. Following the scenario where you want to show your model to your friends, imagine that your friends would talk to each other after one of them have seen your model and that some of them are more talkative and some more respected. Can you assume that the order in which you present your model would have no effect on the level of publicity and prestige of your model? *'Don't think so'*, *'Who knows?!'*, *'Don't really care about it'*? If these thoughts cross your mind while addressing a process in your model, you are probably better off using stochasticity. 
 
 ### Spray pond
 
-A perfect circle is great but it is a poor representation of a real water body. Also, once we implement the dynamics of the model, it will be quite difficult to explore the effect of geography solely by varying the size of the pond. The first step to creating more interesting set ups is to add noise to the condition used to determine whether a patch is land or water. NetLogo has a family of primitive functions, `random` and alike, that can be used to generate random discrete (integer) and continuos (float) values, following different probability distributions (e.g., uniform, normal, exponential).
+A perfect blue circle is great but it is a poor representation of a real water body. Once we implement the dynamics of the model, it will be quite difficult to explore the effect of geography solely by varying the size of the pond. The first step to creating more interesting set ups is to add noise to the condition used to determine whether a patch is land or water. NetLogo has a family of primitive functions, `random` and alike, that can be used to generate random discrete (integer) and continuos (float) values, following different probability distributions (e.g., uniform, normal, exponential).
 
 For each patch, we sample a random continuous number, add it to the `minDistOfLandToCenter`, and use as the threshold distance from the center:
 ```NetLogo
@@ -320,9 +322,10 @@ ifelse (distance centralPatch < coastThreshold)
   set pcolor 54 ; green for land
 ]
 ```
-The function `random-float <number>` returns a random "float" number greater or equal to 0.0 and lower than `<number>`. To strech your learning skills, we are jumping a few minor steps and defining a noise that is a portion of `halfSmallerDimension` and controlable through the parameter `coastalNoiseLevel`.
+The function `random-float <number>` returns a random "float" number greater or equal to 0.0 and lower than `<number>`. To strech your learning skills, we are jumping a few minor steps in refactoring by defining a noise that is a portion of `halfSmallerDimension` and controlable through the parameter `coastalNoiseLevel`.
 
 ### End result
+
 We now can generate strange "spray ponds". More importantly, we made the generation process controllable through two parameters that are easily understandable. Play with the parameters and meditate on their effects on the shape of the pond.
 ```NetLogo
 to create-map
@@ -354,3 +357,106 @@ end
 ```
 
 ![Step 3 interface in NetLogo](PondTrade_step03_adding-noise-interface.png)
+
+## Step 04: Design alternatives, iterations, and print statements
+
+
+### Design alternatives selectable in the interface 
+
+
+### Iteration
+
+
+### Print statements
+
+
+### End result
+
+
+```NetLogo
+to create-map
+
+  print "Creating map..."
+
+  ; erase previous data
+  clear-all
+
+  let centralPatch patch (min-pxcor + (floor world-width / 2)) (min-pycor + (floor world-height / 2))
+
+  let halfSmallerDimension (world-width / 2)
+  if (world-width > world-height) [ set halfSmallerDimension (world-height / 2) ]
+
+  let minDistOfLandToCenter round ((pondSize / 100) * halfSmallerDimension)
+
+  print "Assigning initial patch types..."
+
+  ask patches
+  [
+
+    let coastThreshold minDistOfLandToCenter ; defaults to the basic value
+
+    ;; add noise to coast line
+    ; set general noise range depending on UI's coastalNoiseLevel and the size of world
+    let noiseRange (halfSmallerDimension * coastalNoiseLevel / 100)
+
+    ; noiseType is specified with the chooser in the UI
+    if (noiseType = "uniform")
+    [
+      ; adds a random amount from a uniform distribution with mean minDistOfLandToCenter
+      set noiseRange (random-float noiseRange) - (noiseRange / 2)
+      set coastThreshold minDistOfLandToCenter + noiseRange
+    ]
+    if (noiseType = "normal")
+    [
+      ; adds a random amount from a normal distribution with mean minDistOfLandToCenter
+      set coastThreshold random-normal minDistOfLandToCenter noiseRange
+    ]
+
+    ifelse (distance centralPatch < coastThreshold)
+    [
+      set pcolor 106 ; blue for water
+    ]
+    [
+      set pcolor 54 ; green for land
+    ]
+
+  ]
+
+  print "done."
+
+end
+
+to smooth-coast-line
+
+  print "Smoothing..."
+
+  ; smooth coast line
+  repeat smoothIterations
+  [
+    ask patches
+    [
+      ifelse (pcolor = 106)
+      [
+        ; water patch
+        if (count neighbors with [pcolor = 54] >= coastLineSmoothThreshold)
+        [
+          ; water patch has a certain number of land neighbors
+          set pcolor 54 ; converted to land
+        ]
+      ]
+      [
+        ; land patch
+        if (count neighbors with [pcolor = 106] >= coastLineSmoothThreshold)
+        [
+          ; land patch has a certain number of water neighbors
+          set pcolor 106 ; converted to water
+        ]
+      ]
+    ]
+  ]
+  print "done."
+
+end
+```
+
+![Step 4 interface in NetLogo](PondTrade_step04_design-alternatives-and-iterations-and-printing-interface.png)
