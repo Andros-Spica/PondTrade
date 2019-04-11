@@ -2039,9 +2039,9 @@ frequency
 10.0
 true
 false
-"carefully [set-plot-x-range -0.1 ((max [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of ships) + 0.1)] [ set-plot-x-range 0 1 ]\nset-histogram-num-bars 30" "carefully [set-plot-x-range -0.1 ((max [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of ships) + 0.1)] [ set-plot-x-range 0 1 ]\nset-histogram-num-bars 30"
+"carefully [set-plot-x-range -0.1 ((max [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of ships with [isActivated]) + 0.1)] [ set-plot-x-range 0 1 ]\nset-histogram-num-bars 30" "carefully [set-plot-x-range -0.1 ((max [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of ships with [isActivated]) + 0.1)] [ set-plot-x-range 0 1 ]\nset-histogram-num-bars 30"
 PENS
-"default" 1.0 1 -16777216 true "" "histogram [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of ships"
+"default" 1.0 1 -16777216 true "" "histogram [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of ships with [isActivated]"
 
 MONITOR
 210
