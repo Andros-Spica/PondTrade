@@ -1,5 +1,4 @@
-# PondTrade
-Didactic progressive development of an Agent-based model in NetLogo
+# Pond Trade model: Didactic progressive development of an Agent-based model in NetLogo
 
 This is an Agent-based model (ABM) created explicitly for exemplifying several aspects of the development of ABM models. The target public is students and researchers of Archaeology and History. The development process is broken down into several steps that are progressively complex, each introducing a new concepts and NetLogo functionalities. Each step corresponds to a ".nlogo" file included in this repository. Although ".nlogo" files should be opened in NetLogo in order to run its code, it can also be opened and edited in any text editor.
 
