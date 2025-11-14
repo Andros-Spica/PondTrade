@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/113847898.svg)](https://zenodo.org/badge/latestdoi/113847898)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3881974.svg)](https://doi.org/10.5281/zenodo.3881974)
 
 # Pond Trade model: Didactic progressive development of an Agent-based model in NetLogo
 
