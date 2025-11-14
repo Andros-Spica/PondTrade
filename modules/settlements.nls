@@ -1,0 +1,185 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; SETTLEMENTS.NLS
+;;; Purpose: Procedures related to creating and managing settlements.
+;;; Auto-generated documentation header.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to create-coastal-settlements
+
+  ; consider only coastal patches
+  let coastalPatches patches with [(isLand = true) and (any? neighbors with [isLand = false])]
+
+  repeat numberOfSettlements
+  [
+    ; ask a random coastal patch without a settlement already
+    ask one-of coastalPatches with [not any? settlements-here]
+    [
+      sprout-settlements 1 ; creates one "turtle" of breed settlements
+      [
+        set sizeLevel 1 ; the size level is initiated at minimum (i.e., 1)
+        set stock 0
+
+        set culturalVector extract-rgb color ; 0#, 1# and 2#
+        ; We add seven continuos cultural traits to the neutral RGB traits,
+        ; representing their attitude and ability involving
+        ; aspects we previously fixed as parameters and one variable:
+        ; 3# relativePathCostInLand (normal distribution around global parameter)
+        set culturalVector lput (random-normal 0 landTechVariation) culturalVector
+        ; 4# relativePathCostInPort (normal distribution around global parameter)
+        set culturalVector lput (random-normal 0 portTechVariation) culturalVector
+        ; 5# settlementSizeDecayRate [0 - maxSettlementSizeDecayRate)
+        set culturalVector lput (random-float maxSettlementSizeDecayRate) culturalVector
+        ; 6# stockDecayRate [0 - maxStockDecayRate)
+        set culturalVector lput (random-float maxStockDecayRate) culturalVector
+        ; 7# produtionRate [0 - maxProductionRate)
+        set culturalVector lput (random-float maxProductionRate) culturalVector
+        ; 8# frequencyOverQuality [0 - 1)
+        set culturalVector lput (random-float 1) culturalVector
+        ; 9# traitTransmissionRate [0 - maxTraitTransmissionRate) *** now, it means specifically the 'openess' of a settlement towards other variants of a trait
+        set culturalVector lput (random-float maxTraitTransmissionRate) culturalVector
+        ; 10# mutationVariation [0 - maxMutationVariation)
+        set culturalVector lput (random-float maxMutationVariation) culturalVector
+
+        set shape "circle 2"
+      ]
+      ; replace the land path cost with the port pathCost
+      set pathCost relativePathCostInPort
+      ; exclude this patch from the pool of coastal patches
+      set coastalPatches other coastalPatches
+    ]
+  ]
+
+end
+
+to create-traders-per-settlement
+
+  ask settlements
+  [
+    let thisSettlement self ; to avoid the confusion of nested agent queries
+
+    set potentialNumberOfTraders get-potential-number-of-traders
+
+    hatch-traders potentialNumberOfTraders ; use the sizeLevel variable as the number of traders based in the settlement
+    [
+      setup-trader thisSettlement
+    ]
+
+    set currentNumberOfTraders get-current-number-of-traders
+  ]
+
+end
+
+to update-settlements
+
+  ask settlements
+  [
+    let thisSettlement self
+
+    ; the sizeLevel of settlements decays with a constant rate, up to 1 (minimum)
+    set sizeLevel max (list 1 (sizeLevel * (1 - ((item 5 culturalVector) / 100)) ) )
+    ; production in stock also decays with a constant rate
+    set stock stock * (1 - ((item 6 culturalVector) / 100))
+    ; prodution is generated in proportion to sizeLevel, following a constant rate
+    set stock stock + sizeLevel * ((item 7 culturalVector) / 100)
+
+    ; determine the current and potential number of traders
+    set currentNumberOfTraders get-current-number-of-traders
+    set potentialNumberOfTraders get-potential-number-of-traders
+
+    ; conditions favors the creation of new traders
+    if (random-float 1 > currentNumberOfTraders / potentialNumberOfTraders )
+    [
+      ; create a new trader or activate an old one
+      repeat 1
+      [
+        ifelse (any? traders with [not isActivated])
+        [
+          ask one-of traders with [not isActivated]
+          [
+            setup-trader thisSettlement
+            move-to thisSettlement
+          ]
+        ]
+        [
+          hatch-traders 1
+          [
+            setup-trader thisSettlement
+          ]
+        ]
+      ]
+      set currentNumberOfTraders get-current-number-of-traders ; update currentNumberOfTraders
+    ]
+
+    ; add variation to the settlement traits (mutation)
+    mutate-traits
+  ]
+
+end
+
+to add-trade-effect [ aTrader ] ; ego = settlement
+
+  ; cultural transmission trader to port
+  let newCulturalVector []
+  foreach culturalVector
+  [ ?1 ->
+    let otherSettlementTrait item (length newCulturalVector) [culturalSample] of aTrader
+    let traitChange (otherSettlementTrait - ?1) * ((item 9 culturalVector) / 100)
+    set newCulturalVector lput (?1 + traitChange) newCulturalVector
+  ]
+;  print (word "========== " self " ============")
+;  print (word "old vector: " culturalVector ", new vector: " newCulturalVector)
+  set culturalVector newCulturalVector
+
+  set sizeLevel sizeLevel + [cargoValue] of aTrader
+
+end
+
+to mutate-traits
+
+  let mutationVariationToApply (item 10 culturalVector) / 100
+  ;print "========================================"
+  ;print culturalVector
+  ; #1, #2 and #3
+  set culturalVector replace-item 0 culturalVector mutate-trait (item 0 culturalVector) 0 255 mutationVariationToApply
+  set culturalVector replace-item 1 culturalVector mutate-trait (item 1 culturalVector) 0 255 mutationVariationToApply
+  set culturalVector replace-item 2 culturalVector mutate-trait (item 2 culturalVector) 0 255 mutationVariationToApply
+
+  ; #3 and #4 (relativePathCostInLand, relativePathCostInPort)
+  set culturalVector replace-item 3 culturalVector mutate-trait (item 3 culturalVector) (-1 * relativePathCostInLand + 1) 100 mutationVariationToApply ; arbitrary maximum
+  set culturalVector replace-item 4 culturalVector mutate-trait (item 4 culturalVector) (-1 * relativePathCostInPort + 1) 100 mutationVariationToApply ; arbitrary maximum
+
+  ; #5, #6 and #6 (settlementSizeDecayRate, stockDecayRate, produtionRate)
+  set culturalVector replace-item 5 culturalVector mutate-trait (item 5 culturalVector) 0 maxSettlementSizeDecayRate mutationVariationToApply
+  set culturalVector replace-item 6 culturalVector mutate-trait (item 6 culturalVector) 0 maxStockDecayRate mutationVariationToApply
+  set culturalVector replace-item 7 culturalVector mutate-trait (item 7 culturalVector) 0 maxProductionRate mutationVariationToApply
+
+  ; #8, #9 and #10 (frequencyOverQuality, traitTransmissionRate, mutationVariation)
+  set culturalVector replace-item 8 culturalVector mutate-trait (item 8 culturalVector) 0 1 mutationVariationToApply
+  set culturalVector replace-item 9 culturalVector mutate-trait (item 9 culturalVector) 0 maxTraitTransmissionRate mutationVariationToApply
+  set culturalVector replace-item 10 culturalVector mutate-trait (item 10 culturalVector) 0 maxMutationVariation mutationVariationToApply
+
+  ;print culturalVector
+
+end
+
+to-report mutate-trait [ traitValue minValue maxValue mutationVar ]
+
+  report (max (list minValue min (list maxValue (traitValue + (random-normal 0 mutationVar) * (maxValue - minValue)))))
+
+end
+
+to-report get-potential-number-of-traders ; ego = settlement
+
+  report (
+    1 +
+    (sizeLevel - 1) * (item 8 culturalVector)
+    )
+
+end
+
+to-report get-current-number-of-traders ; ego = settlement
+
+  let thisSettlement self
+  report count traders with [isActivated and base = thisSettlement ]
+
+end

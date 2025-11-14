@@ -1,0 +1,49 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; MAIN.NLS
+;;; Purpose: Stricly, setup and go procedures
+;;; Auto-generated documentation header.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to setup
+
+  clear-all
+  reset-ticks
+
+  ; set the random seed so we can reproduce the same experiment
+  random-seed seed
+  
+  set patchesCount count patches
+
+  create-map
+  
+  assign-path-cost
+
+  create-coastal-settlements
+
+  set-routes
+
+  create-traders-per-settlement
+
+  update-output
+
+  update-display
+
+  update-plots
+
+end
+
+to go
+
+  tick
+
+  if (ticks = 100000 or count turtles > 2000) [ stop ]
+
+  update-traders
+
+  update-settlements
+
+  update-output
+
+  update-display
+
+end

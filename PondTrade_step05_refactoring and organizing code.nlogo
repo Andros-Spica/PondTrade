@@ -37,6 +37,9 @@ to setup
 
   clear-all
 
+  ; set the random seed so we can reproduce the same experiment
+  random-seed seed
+
   create-map
 
 end
@@ -50,15 +53,14 @@ to create-map
 
   let minDistOfLandToCenter round ((pondSize / 100) * halfSmallerDimension)
 
+  let coastThreshold minDistOfLandToCenter ; defaults to the basic value
+
+  ;; add noise to coast line
+  ; set general noise range depending on UI's coastalNoiseLevel and the size of world
+  let noiseRange (halfSmallerDimension * coastalNoiseLevel / 100)
+
   ask patches
   [
-
-    let coastThreshold minDistOfLandToCenter ; defaults to the basic value
-
-    ;; add noise to coast line
-    ; set general noise range depending on UI's coastalNoiseLevel and the size of world
-    let noiseRange (halfSmallerDimension * coastalNoiseLevel / 100)
-
     ; noiseType is specified with the chooser in the UI
     if (noiseType = "uniform")
     [
@@ -252,6 +254,17 @@ Map parameters
 14
 0.0
 1
+
+INPUTBOX
+123
+21
+180
+81
+seed
+0.0
+1
+0
+Number
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -595,7 +608,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.4
+NetLogo 6.2.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

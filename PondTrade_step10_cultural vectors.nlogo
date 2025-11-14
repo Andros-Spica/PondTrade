@@ -23,7 +23,7 @@
 ;;;;;;;;;;;;;;;;;
 
 breed [ settlements settlement ]
-breed [ ships ship ]
+breed [ traders trader ]
 
 ;;;;;;;;;;;;;;;;;
 ;;; VARIABLES ;;;
@@ -34,13 +34,13 @@ globals [ routes ]
 settlements-own
 [
   sizeLevel
-  currentNumberOfShips potentialNumberOfShips
+  currentNumberOfTraders potentialNumberOfTraders
   stock
   frequencyOverQuality
   culturalVector
 ]
 
-ships-own
+traders-own
 [
   isActivated
   base route destination direction lastPosition
@@ -69,13 +69,16 @@ to setup
   clear-all
   reset-ticks
 
+  ; set the random seed so we can reproduce the same experiment
+  random-seed seed
+
   create-map
 
   create-coastal-settlements
 
   set-routes
 
-  create-ships-per-settlement
+  create-traders-per-settlement
 
   update-display
 
@@ -90,15 +93,14 @@ to create-map
 
   let minDistOfLandToCenter round ((pondSize / 100) * halfSmallerDimension)
 
+  let coastThreshold minDistOfLandToCenter ; defaults to the basic value
+
+  ;; add noise to coast line
+  ; set general noise range depending on UI's coastalNoiseLevel and the size of world
+  let noiseRange (halfSmallerDimension * coastalNoiseLevel / 100)
+
   ask patches
   [
-
-    let coastThreshold minDistOfLandToCenter ; defaults to the basic value
-
-    ;; add noise to coast line
-    ; set general noise range depending on UI's coastalNoiseLevel and the size of world
-    let noiseRange (halfSmallerDimension * coastalNoiseLevel / 100)
-
     ; noiseType is specified with the chooser in the UI
     if (noiseType = "uniform")
     [
@@ -207,25 +209,26 @@ to create-coastal-settlements
   ]
 
 end
-to create-ships-per-settlement
+
+to create-traders-per-settlement
 
   ask settlements
   [
     let thisSettlement self ; to avoid the confusion of nested agent queries
 
-    set potentialNumberOfShips get-potential-number-of-ships
+    set potentialNumberOfTraders get-potential-number-of-traders
 
-    hatch-ships potentialNumberOfShips ; use the sizeLevel variable as the number of ships based in the settlement
+    hatch-traders potentialNumberOfTraders ; use the sizeLevel variable as the number of traders based in the settlement
     [
-      setup-ship thisSettlement
+      setup-trader thisSettlement
     ]
 
-    set currentNumberOfShips get-current-number-of-ships
+    set currentNumberOfTraders get-current-number-of-traders
   ]
 
 end
 
-to setup-ship [ baseSettlement ]
+to setup-trader [ baseSettlement ]
 
   set base baseSettlement
   set isActivated true
@@ -271,7 +274,7 @@ to go
 
   if (ticks = 10000 or count turtles > 500) [ stop ]
 
-  update-ships
+  update-traders
 
   update-settlements
 
@@ -279,14 +282,14 @@ to go
 
 end
 
-to update-ships
+to update-traders
 
-  let activeShips ships with [isActivated]
-  let shipsInBase activeShips with [is-in-base]
-  let shipsInDestination activeShips with [is-in-destination]
+  let activeTraders traders with [isActivated]
+  let tradersInBase activeTraders with [is-in-base]
+  let tradersInDestination activeTraders with [is-in-destination]
 
   ; UPDATE LAST POSITION
-  ask activeShips
+  ask activeTraders
   [
     ; update lastPosition if in a patch centre
     if ((xcor = [pxcor] of patch-here) and (ycor = [pycor] of patch-here))
@@ -296,49 +299,49 @@ to update-ships
   ]
 
   ; UNLOAD
-  ask (turtle-set shipsInBase shipsInDestination) with [cargoValue > 0]
+  ask (turtle-set tradersInBase tradersInDestination) with [cargoValue > 0]
   [
     ; unload cargo (changes sizeLevel)
     unload-cargo
   ]
 
-  ; CHECK if the ship can be sustained when in the base
-  ask shipsInBase
+  ; CHECK if the trader can be sustained when in the base
+  ask tradersInBase
   [
-    if ([potentialNumberOfShips < currentNumberOfShips] of base)
+    if ([potentialNumberOfTraders < currentNumberOfTraders] of base)
     [
-      ; the current number of ships cannot be sustained
+      ; the current number of traders cannot be sustained
       set isActivated false
-      ; update currentNumberOfShips of base
-      ask base [ set currentNumberOfShips get-current-number-of-ships ]
+      ; update currentNumberOfTraders of base
+      ask base [ set currentNumberOfTraders get-current-number-of-traders ]
     ]
   ]
 
-  set activeShips ships with [isActivated] ; update active ships
-  set shipsInBase shipsInBase with [isActivated] ; update ships in base
+  set activeTraders traders with [isActivated] ; update active traders
+  set tradersInBase tradersInBase with [isActivated] ; update traders in base
 
   ; LOAD
-  ask (turtle-set shipsInBase shipsInDestination)
+  ask (turtle-set tradersInBase tradersInDestination)
   [
     ; load cargo (changes stock)
     load-cargo
   ]
 
   ; CHOOSE DESTINATION
-  ask shipsInBase with [cargoValue > 0]
+  ask tradersInBase with [cargoValue > 0]
   [
     ; update the destination whenever in the base settlement and there is cargo to transport
     choose-destination
   ]
 
   ; FIND DIRECTION in route
-  ask (turtle-set shipsInBase shipsInDestination)
+  ask (turtle-set tradersInBase tradersInDestination)
   [
     find-direction
   ]
 
   ; MOVE towards the next position in the route
-  ask activeShips with [cargoValue > 0]
+  ask activeTraders with [cargoValue > 0]
   [
     ; move following the route when there is cargo to transport
     move-to-destination
@@ -346,12 +349,12 @@ to update-ships
 
 end
 
-to choose-destination ; ego = ship
+to choose-destination ; ego = trader
 
-  let thisShip self
+  let thisTrader self
 
   ; get routes connecting the base settlement
-  let routesFromBase get-routes-to-settlement [base] of thisShip
+  let routesFromBase get-routes-to-settlement [base] of thisTrader
 
   ; order these routes by benefit/cost ratio
   set routesFromBase sort-by [ [?1 ?2] -> benefit-cost-of-route ?1 > benefit-cost-of-route ?2 ] routesFromBase
@@ -371,13 +374,13 @@ to choose-destination ; ego = ship
   set route first routesFromBase
 
   ; get the settlement of destination
-  set destination one-of (get-origin-and-destination route) with [who != [who] of ([base] of thisShip)]
+  set destination one-of (get-origin-and-destination route) with [who != [who] of ([base] of thisTrader)]
 
 end
 
-to find-direction ; ego = ship
+to find-direction ; ego = trader
 
-  ; find where in the route list is the ship
+  ; find where in the route list is the trader
   let currentPosition position lastPosition route
 
   ; set direction if in a settlement
@@ -393,13 +396,13 @@ to find-direction ; ego = ship
       set direction -1
     ]
   ]
-  ; else the ship is in route to either the base or the destination
+  ; else the trader is in route to either the base or the destination
 
 end
 
-to move-to-destination ; ego = ship
+to move-to-destination ; ego = trader
 
-  ; find where in the route list is the ship
+  ; find where in the route list is the trader
   let currentPosition position lastPosition route
 
   ; move through the route following direction
@@ -414,29 +417,29 @@ to move-to-destination ; ego = ship
 
 end
 
-to-report is-in-base ; ego = ship
+to-report is-in-base ; ego = trader
 
-  report (xcor = [xcor] of base) and (ycor = [ycor] of base) ; if the ship arrived at the centre of the base patch
-
-end
-
-to-report is-in-destination ; ego = ship
-
-  report (xcor = [xcor] of destination) and (ycor = [ycor] of destination) ; if the ship arrived at the centre of the destination patch
+  report (xcor = [xcor] of base) and (ycor = [ycor] of base) ; if the trader arrived at the centre of the base patch
 
 end
 
-to unload-cargo ; ego = ship
+to-report is-in-destination ; ego = trader
 
-  let thisShip self
+  report (xcor = [xcor] of destination) and (ycor = [ycor] of destination) ; if the trader arrived at the centre of the destination patch
+
+end
+
+to unload-cargo ; ego = trader
+
+  let thisTrader self
   let settlementHere one-of settlements-here
 
   ; unload cargo
-  ask settlementHere [ add-trade-effect thisShip ]
+  ask settlementHere [ add-trade-effect thisTrader ]
 
 end
 
-to load-cargo ; ego = ship
+to load-cargo ; ego = trader
 
   let settlementHere one-of settlements-here
 
@@ -461,44 +464,44 @@ to update-settlements
     ; prodution is generated in proportion to sizeLevel, following a constant rate
     set stock stock + sizeLevel * (productionRate / 100)
 
-    ; determine the current and potential number of ships
-    set currentNumberOfShips get-current-number-of-ships
-    set potentialNumberOfShips get-potential-number-of-ships
+    ; determine the current and potential number of traders
+    set currentNumberOfTraders get-current-number-of-traders
+    set potentialNumberOfTraders get-potential-number-of-traders
 
-    ; conditions favors the creation of new ships
-    if (random-float 1 > currentNumberOfShips / potentialNumberOfShips )
+    ; conditions favors the creation of new traders
+    if (random-float 1 > currentNumberOfTraders / potentialNumberOfTraders )
     [
-      ; create a new ship or activate an old one
+      ; create a new trader or activate an old one
       repeat 1
       [
-        ifelse (any? ships with [not isActivated])
+        ifelse (any? traders with [not isActivated])
         [
-          ask one-of ships with [not isActivated]
+          ask one-of traders with [not isActivated]
           [
-            setup-ship thisSettlement
+            setup-trader thisSettlement
             move-to thisSettlement
           ]
         ]
         [
-          hatch-ships 1
+          hatch-traders 1
           [
-            setup-ship thisSettlement
+            setup-trader thisSettlement
           ]
         ]
       ]
-      set currentNumberOfShips get-current-number-of-ships ; update currentNumberOfShips
+      set currentNumberOfTraders get-current-number-of-traders ; update currentNumberOfTraders
     ]
   ]
 
 end
 
-to add-trade-effect [ aShip ] ; ego = settlement
+to add-trade-effect [ aTrader ] ; ego = settlement
 
-  ; cultural transmission ship to port
+  ; cultural transmission trader to port
   let newCulturalVector []
   foreach culturalVector
   [ ?1 ->
-    let otherSettlementTrait item (length newCulturalVector) [culturalSample] of aShip
+    let otherSettlementTrait item (length newCulturalVector) [culturalSample] of aTrader
     let traitChange (otherSettlementTrait - ?1) * (traitTransmissionRate / 100)
     set newCulturalVector lput (?1 + traitChange) newCulturalVector
   ]
@@ -506,12 +509,12 @@ to add-trade-effect [ aShip ] ; ego = settlement
 ;  print (word "old vector: " culturalVector ", new vector: " newCulturalVector)
   set culturalVector newCulturalVector
 
-  set sizeLevel sizeLevel + [cargoValue] of aShip
+  set sizeLevel sizeLevel + [cargoValue] of aTrader
 
 end
 
 
-to-report get-potential-number-of-ships ; ego = settlement
+to-report get-potential-number-of-traders ; ego = settlement
 
   report (
     1 +
@@ -520,10 +523,10 @@ to-report get-potential-number-of-ships ; ego = settlement
 
 end
 
-to-report get-current-number-of-ships ; ego = settlement
+to-report get-current-number-of-traders ; ego = settlement
 
   let thisSettlement self
-  report count ships with [isActivated and base = thisSettlement ]
+  report count traders with [isActivated and base = thisSettlement ]
 
 end
 
@@ -542,7 +545,7 @@ to update-display
     set color rgb (item 0 culturalVector) (item 1 culturalVector) (item 2 culturalVector)
   ]
 
-  ask ships
+  ask traders
   [
     ifelse (isActivated)
     [ set hidden? false ]
@@ -591,7 +594,7 @@ end
 
 to paint-active-routes
 
-  ask ships
+  ask traders
   [
     foreach route
     [ ?1 ->
@@ -891,10 +894,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-62
-70
-234
-103
+85
+66
+257
+99
 numberOfSettlements
 numberOfSettlements
 0
@@ -906,9 +909,9 @@ NIL
 HORIZONTAL
 
 BUTTON
-11
+76
 15
-78
+143
 48
 Set up
 setup
@@ -976,9 +979,9 @@ X path cost in water
 HORIZONTAL
 
 BUTTON
-96
+149
 16
-159
+212
 49
 Go
 go
@@ -993,9 +996,9 @@ NIL
 1
 
 BUTTON
-180
+221
 16
-243
+284
 49
 Go
 go
@@ -1177,7 +1180,7 @@ PLOT
 151
 1290
 271
-Ships
+Traders
 ticks
 count
 0.0
@@ -1188,7 +1191,18 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot count ships with [isActivated]"
+"default" 1.0 0 -16777216 true "" "plot count traders with [isActivated]"
+
+INPUTBOX
+10
+10
+74
+70
+seed
+0.0
+1
+0
+Number
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1548,7 +1562,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.4
+NetLogo 6.2.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

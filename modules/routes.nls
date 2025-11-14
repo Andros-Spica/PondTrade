@@ -1,0 +1,283 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; ROUTES.NLS
+;;; Purpose: Procedures for route calculation, pathfinding, and connectivity logic.
+;;; Auto-generated documentation header.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to set-routes
+
+  set routes [] ; initialize/reset the routes as an empty list
+
+  let settlementsWithoutRoutes settlements ; helper variable to keep track of which settlement already searched for routes
+
+  ask settlements
+  [
+    let thisSettlement self
+
+    ask other settlementsWithoutRoutes
+    [
+      let optimalRoute find-a-path ([patch-here] of thisSettlement) ([patch-here] of self) ; find the optimal route to this settlement
+      set routes lput optimalRoute routes ; add the optimal route to the end of the routes list
+    ]
+
+    set settlementsWithoutRoutes other settlementsWithoutRoutes
+
+  ]
+
+end
+
+to-report get-route [ settlement1 settlement2 ] ; accepts two settlements and returns a route
+
+  ; get routes connecting settlement1
+  let routesFromSettlement1 filter
+  [ ?1 ->
+    ([one-of settlements-here] of first ?1 = settlement1) or
+    ([one-of settlements-here] of last ?1 = settlement1)
+  ] routes
+
+  ; get the route connecting settlement2 from the previous list
+  let routeFromSettlement1ToSettlement2 filter
+  [ ?1 ->
+    ([one-of settlements-here] of first ?1 = settlement2) or
+    ([one-of settlements-here] of last ?1 = settlement2)
+  ] routesFromSettlement1
+
+  report first routeFromSettlement1ToSettlement2
+
+end
+
+to assign-path-cost
+
+  ask patches
+  [
+    ifelse (isLand = false)
+    [ set pathCost 1 ] ; arbitrary unit for now
+    [ set pathCost relativePathCostInLand ] ; defined by parameter in relation to the cost of path in water (i.e., 1)
+  ]
+
+end
+
+to-report get-path-cost [ aPatch aTrader ]
+
+  let pathCostOfPatch [pathCost] of aPatch
+  if ([isLand] of aPatch)
+  [
+    ifelse ([any? settlements-here] of aPatch)
+    [
+      ; path cost in port apply
+      set pathCostOfPatch pathCostOfPatch + [(item 4 culturalVector)] of [base] of aTrader
+    ]
+    [
+      ; path cost in land apply
+      set pathCostOfPatch pathCostOfPatch + [(item 3 culturalVector)] of [base] of aTrader
+    ]
+  ]
+  report pathCostOfPatch
+
+end
+
+to-report get-origin-and-destination [ aRoute ] ; accepts a route and returns a turtle-set with two settlements
+
+  report (turtle-set ([ one-of settlements-here ] of first aRoute) ([one-of settlements-here ] of last aRoute))
+
+end
+
+to-report get-routes-to-settlement [ aSettlement ] ; accepts a settlement and return a list of routes
+
+  report filter
+  [ ?1 ->
+    ([one-of settlements-here] of first ?1 = aSettlement) or
+    ([one-of settlements-here] of last ?1 = aSettlement)
+  ] routes
+
+end
+
+to-report benefit-cost-of-route [ aRoute aTrader ] ; accepts a route andpan returns a number (the benefit/cost ratio of the route)
+
+  let cost 0
+
+  foreach aRoute ; for every patch in the given route
+  [ ?1 ->
+    set cost cost + get-path-cost ?1 aTrader
+  ]
+
+  let originAndDestination get-origin-and-destination aRoute
+  let benefit 0
+  ask originAndDestination [ set benefit benefit + sizeLevel ] ; the benefit is the sum of the sizeLevel of the two settlements
+
+  report benefit / cost
+
+end
+
+to-report find-a-path [ source-patch destination-patch]
+
+  ; initialize all variables to default values
+  let search-done? false
+  let search-path []
+  let current-patch 0
+  let open [] ;-------------------------------*
+  let closed [] ;-------------------------------*
+
+  ;-------------------------------*
+  ask patches with [ f != 0 ]
+  [
+    set f 0
+    set h 0
+    set g 0
+  ]
+  ;-------------------------------*
+
+  ; add source patch in the open list
+  set open lput source-patch open
+
+  ; loop until we reach the destination or the open list becomes empty
+  while [ search-done? != true]
+  [
+    ifelse length open != 0
+    [
+      ; sort the patches in open list in increasing order of their f() values
+      set open sort-by [ [?1 ?2] -> [f] of ?1 < [f] of ?2 ] open
+
+      ; take the first patch in the open list
+      ; as the current patch (which is currently being explored (n))
+      ; and remove it from the open list
+      set current-patch item 0 open
+      set open remove-item 0 open
+
+      ; add the current patch to the closed list
+      set closed lput current-patch closed
+
+      ; explore the Von Neumann (left, right, top and bottom) neighbors of the current patch
+      ask current-patch
+      [
+        ; if any of the neighbors is the destination stop the search process
+        ifelse any? neighbors4 with [ (pxcor = [ pxcor ] of destination-patch) and (pycor = [pycor] of destination-patch)] ;-------------------------------*
+        [
+          set search-done? true
+        ]
+        [
+          ; the neighbors should not already explored patches (part of the closed list)
+          ask neighbors4 with [ (not member? self closed) and (self != parent-patch) ] ;-------------------------------*
+          [
+            ; the neighbors to be explored should also not be the source or
+            ; destination patches or already a part of the open list (unexplored patches list)
+            if not member? self open and self != source-patch and self != destination-patch
+            [
+              ;set pcolor 45 ;-------------------------------*
+
+              ; add the eligible patch to the open list
+              set open lput self open
+
+              ; update the path finding variables of the eligible patch
+              set parent-patch current-patch
+              set g [g] of parent-patch + pathCost ;-------------------------------*
+              set h distance destination-patch
+              set f (g + h)
+            ]
+          ]
+        ]
+;        if self != source-patch ;-------------------------------*
+;        [
+;          set pcolor 35
+;        ]
+      ]
+    ]
+    [
+      ; if a path is not found (search is incomplete) and the open list is exhausted
+      ; display a user message and report an empty search path list.
+      user-message( "A path from the source to the destination does not exist." )
+      report []
+    ]
+  ]
+
+  ; if a path is found (search completed) add the current patch
+  ; (node adjacent to the destination) to the search path.
+  set search-path lput current-patch search-path
+
+  ; trace the search path from the current patch
+  ; all the way to the source patch using the parent patch
+  ; variable which was set during the search for every patch that was explored
+  let temp first search-path
+  while [ temp != source-patch ]
+  [
+;    ask temp ;-------------------------------*
+;    [
+;      set pcolor 85
+;    ]
+    set search-path lput [parent-patch] of temp search-path
+    set temp [parent-patch] of temp
+  ]
+
+  ; add the destination patch to the front of the search path
+  set search-path fput destination-patch search-path
+
+  ; reverse the search path so that it starts from a patch adjacent to the
+  ; source patch and ends at the destination patch
+  set search-path reverse search-path
+
+  ; report the search path
+  report search-path
+end
+
+to paint-routes
+
+  ; resets route patches to the terrain color
+  foreach routes
+  [ ?1 ->
+    let aRoute ?1
+
+    foreach aRoute
+    [ ??1 ->
+      ask ??1 [ paint-terrain ]
+    ]
+  ]
+
+  ; paint route patches in shades of red depending on route frequency
+  foreach routes
+  [ ?1 ->
+    let aRoute ?1
+
+    foreach aRoute
+    [ ??1 ->
+      ask ??1
+      [
+        if (showRoutes)
+        [
+          ifelse (pcolor < 11 or pcolor > 19) ; if its the first route crossing the patch
+          [
+            set pcolor 11
+          ]
+          [
+            set pcolor min (list (pcolor + 1) (19)) ; sets a maximum at 19 (the brightest)
+          ]
+        ]
+      ]
+    ]
+  ]
+
+end
+
+to paint-active-routes
+
+  ask traders
+  [
+    foreach route
+    [ ?1 ->
+      ask ?1
+      [
+        ifelse (showActiveRoutes)
+        [
+          set pcolor yellow
+        ]
+        [
+          if (not showRoutes) ; if not displaying all routes
+          [
+            ; resets to the patch terrain color
+            paint-terrain
+          ]
+        ]
+      ]
+    ]
+  ]
+
+end

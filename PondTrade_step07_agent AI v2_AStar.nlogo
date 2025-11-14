@@ -23,7 +23,7 @@
 ;;;;;;;;;;;;;;;;;
 
 breed [ settlements settlement ]
-breed [ ships ship ]
+breed [ traders trader ]
 
 ;;;;;;;;;;;;;;;;;
 ;;; VARIABLES ;;;
@@ -33,7 +33,7 @@ globals [ routes ]
 
 settlements-own [ sizeLevel ]
 
-ships-own [ base route destination direction lastPosition ]
+traders-own [ base route destination direction lastPosition ]
 
 patches-own
 [
@@ -56,13 +56,16 @@ to setup
   reset-timer
   clear-all
 
+  ; set the random seed so we can reproduce the same experiment
+  random-seed seed
+
   create-map
 
   create-coastal-settlements
 
   set-routes
 
-  create-ships-per-settlement
+  create-traders-per-settlement
 
   update-display
 
@@ -79,15 +82,14 @@ to create-map
 
   let minDistOfLandToCenter round ((pondSize / 100) * halfSmallerDimension)
 
+  let coastThreshold minDistOfLandToCenter ; defaults to the basic value
+
+  ;; add noise to coast line
+  ; set general noise range depending on UI's coastalNoiseLevel and the size of world
+  let noiseRange (halfSmallerDimension * coastalNoiseLevel / 100)
+
   ask patches
   [
-
-    let coastThreshold minDistOfLandToCenter ; defaults to the basic value
-
-    ;; add noise to coast line
-    ; set general noise range depending on UI's coastalNoiseLevel and the size of world
-    let noiseRange (halfSmallerDimension * coastalNoiseLevel / 100)
-
     ; noiseType is specified with the chooser in the UI
     if (noiseType = "uniform")
     [
@@ -198,14 +200,14 @@ to create-coastal-settlements
 
 end
 
-to create-ships-per-settlement
+to create-traders-per-settlement
 
-  ; For now, we create only one ship to better control its behaviour
+  ; For now, we create only one trader to better control its behaviour
   ask one-of settlements
   [
     let thisSettlement self
 
-    hatch-ships 1
+    hatch-traders 1
     [
       set base thisSettlement
 
@@ -215,13 +217,13 @@ to create-ships-per-settlement
     ]
   ]
 
-; the previous code for creating ships can be commented out
+; the previous code for creating traders can be commented out
 ; by adding ';' at the beggining of each line, or
 ; by selecting several lines and either selecting 'Edit > Comment' or pressing 'ctrl + ;'.
 ;  ask settlements
 ;  [
 ;    let thisSettlement self ; to avoid the confusion of nested agent queries
-;    hatch-ships round sizeLevel ; use the sizeLevel variable as the number of ships based in the settlement
+;    hatch-traders round sizeLevel ; use the sizeLevel variable as the number of traders based in the settlement
 ;    [
 ;      set base thisSettlement
 ;
@@ -280,7 +282,7 @@ end
 
 to go
 
-  ask ships
+  ask traders
   [
     if (patch-here = [patch-here] of base) ; update the destination whenever in the base settlement
     [
@@ -291,12 +293,12 @@ to go
 
 end
 
-to choose-destination ; ego = ship
+to choose-destination ; ego = trader
 
-  let thisShip self
+  let thisTrader self
 
   ; get routes connecting the base settlement
-  let routesFromBase get-routes-from-settlement [base] of thisShip
+  let routesFromBase get-routes-from-settlement [base] of thisTrader
 
   ; order these routes by benefit/cost ratio
   set routesFromBase sort-by [ [?1 ?2] -> benefit-cost-of-route ?1 > benefit-cost-of-route ?2 ] routesFromBase
@@ -322,18 +324,18 @@ to choose-destination ; ego = ship
   ]
 
   ; get the settlement of destination
-  set destination one-of (get-origin-and-destination route) with [who != [who] of ([base] of thisShip)]
+  set destination one-of (get-origin-and-destination route) with [who != [who] of ([base] of thisTrader)]
 
 end
 
-to move-to-destination ; ego = ship
+to move-to-destination ; ego = trader
 
   ; update lastPosition if in a patch centre
   if ((xcor = [pxcor] of patch-here) and (ycor = [pycor] of patch-here))
   [
     set lastPosition patch-here
   ]
-  ; find where in the route list is the ship
+  ; find where in the route list is the trader
   let currentPosition position lastPosition route
 
   ; set direction if in a settlement
@@ -347,7 +349,7 @@ to move-to-destination ; ego = ship
       set direction -1 ; move in the route list towards smaller index numbers
     ]
   ]
-  ; else the ship is in route to either the base or the destination
+  ; else the trader is in route to either the base or the destination
 
   ; move through the route following direction
   let targetPatch item (currentPosition + direction) route
@@ -644,10 +646,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-63
-75
-235
-108
+97
+67
+269
+100
 numberOfSettlements
 numberOfSettlements
 0
@@ -659,10 +661,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-30
-27
-97
-60
+105
+20
+172
+53
 Set up
 setup
 NIL
@@ -729,10 +731,10 @@ X path cost in water
 HORIZONTAL
 
 BUTTON
-124
-27
-187
-60
+199
+20
+262
+53
 Go
 go
 NIL
@@ -803,6 +805,17 @@ OUTPUT
 1075
 222
 11
+
+INPUTBOX
+10
+20
+88
+80
+seed
+0.0
+1
+0
+Number
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1162,7 +1175,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.4
+NetLogo 6.2.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

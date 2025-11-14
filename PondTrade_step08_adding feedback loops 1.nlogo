@@ -23,7 +23,7 @@
 ;;;;;;;;;;;;;;;;;
 
 breed [ settlements settlement ]
-breed [ ships ship ]
+breed [ traders trader ]
 
 ;;;;;;;;;;;;;;;;;
 ;;; VARIABLES ;;;
@@ -33,7 +33,7 @@ globals [ routes ]
 
 settlements-own [ sizeLevel ]
 
-ships-own [ base route destination direction lastPosition cargoValue ]
+traders-own [ base route destination direction lastPosition cargoValue ]
 
 patches-own
 [
@@ -56,13 +56,16 @@ to setup
   clear-all
   reset-ticks
 
+  ; set the random seed so we can reproduce the same experiment
+  random-seed seed
+
   create-map
 
   create-coastal-settlements
 
   set-routes
 
-  create-ships-per-settlement
+  create-traders-per-settlement
 
   update-display
 
@@ -77,15 +80,14 @@ to create-map
 
   let minDistOfLandToCenter round ((pondSize / 100) * halfSmallerDimension)
 
+  let coastThreshold minDistOfLandToCenter ; defaults to the basic value
+
+  ;; add noise to coast line
+  ; set general noise range depending on UI's coastalNoiseLevel and the size of world
+  let noiseRange (halfSmallerDimension * coastalNoiseLevel / 100)
+
   ask patches
   [
-
-    let coastThreshold minDistOfLandToCenter ; defaults to the basic value
-
-    ;; add noise to coast line
-    ; set general noise range depending on UI's coastalNoiseLevel and the size of world
-    let noiseRange (halfSmallerDimension * coastalNoiseLevel / 100)
-
     ; noiseType is specified with the chooser in the UI
     if (noiseType = "uniform")
     [
@@ -189,12 +191,12 @@ to create-coastal-settlements
 
 end
 
-to create-ships-per-settlement
+to create-traders-per-settlement
 
   ask settlements
   [
     let thisSettlement self ; to avoid the confusion of nested agent queries
-    hatch-ships round sizeLevel ; use the sizeLevel variable as the number of ships based in the settlement
+    hatch-traders round sizeLevel ; use the sizeLevel variable as the number of traders based in the settlement
     [
       set base thisSettlement
 
@@ -239,7 +241,7 @@ to go
 
   tick
 
-  update-ships
+  update-traders
 
   ; the size of settlements decays with a constant rate, up to 1 (minimum)
   ask settlements
@@ -251,13 +253,13 @@ to go
 
 end
 
-to update-ships
+to update-traders
 
-  let shipsInBase ships with [is-in-base]
-  let shipsInDestination ships with [is-in-destination]
+  let tradersInBase traders with [is-in-base]
+  let tradersInDestination traders with [is-in-destination]
 
   ; UPDATE LAST POSITION
-  ask ships
+  ask traders
   [
     ; update lastPosition if in a patch centre
     if ((xcor = [pxcor] of patch-here) and (ycor = [pycor] of patch-here))
@@ -267,7 +269,7 @@ to update-ships
   ]
 
   ; UNLOAD
-  ask (turtle-set shipsInBase shipsInDestination) with [cargoValue > 0]
+  ask (turtle-set tradersInBase tradersInDestination) with [cargoValue > 0]
   [
     ; unload cargo (changes sizeLevel)
     unload-cargo
@@ -276,20 +278,20 @@ to update-ships
   ]
 
   ; CHOOSE DESTINATION
-  ask shipsInBase
+  ask tradersInBase
   [
     ; update the destination whenever in the base settlement and there is cargo to transport
     choose-destination
   ]
 
   ; FIND DIRECTION in route
-  ask (turtle-set shipsInBase shipsInDestination)
+  ask (turtle-set tradersInBase tradersInDestination)
   [
     find-direction
   ]
 
   ; MOVE towards the next position in the route
-  ask ships
+  ask traders
   [
     ; move following the route when there is cargo to transport
     move-to-destination
@@ -297,12 +299,12 @@ to update-ships
 
 end
 
-to choose-destination ; ego = ship
+to choose-destination ; ego = trader
 
-  let thisShip self
+  let thisTrader self
 
   ; get routes connecting the base settlement
-  let routesFromBase get-routes-to-settlement [base] of thisShip
+  let routesFromBase get-routes-to-settlement [base] of thisTrader
 
   ; order these routes by benefit/cost ratio
   set routesFromBase sort-by [ [?1 ?2] -> benefit-cost-of-route ?1 > benefit-cost-of-route ?2 ] routesFromBase
@@ -322,13 +324,13 @@ to choose-destination ; ego = ship
   set route first routesFromBase
 
   ; get the settlement of destination
-  set destination one-of (get-origin-and-destination route) with [who != [who] of ([base] of thisShip)]
+  set destination one-of (get-origin-and-destination route) with [who != [who] of ([base] of thisTrader)]
 
 end
 
-to find-direction ; ego = ship
+to find-direction ; ego = trader
 
-  ; find where in the route list is the ship
+  ; find where in the route list is the trader
   let currentPosition position lastPosition route
 
   ; set direction if in a settlement
@@ -344,13 +346,13 @@ to find-direction ; ego = ship
       set direction -1
     ]
   ]
-  ; else the ship is in route to either the base or the destination
+  ; else the trader is in route to either the base or the destination
 
 end
 
-to move-to-destination ; ego = ship
+to move-to-destination ; ego = trader
 
-  ; find where in the route list is the ship
+  ; find where in the route list is the trader
   let currentPosition position lastPosition route
 
   ; move through the route following direction
@@ -365,29 +367,29 @@ to move-to-destination ; ego = ship
 
 end
 
-to-report is-in-base ; ego = ship
+to-report is-in-base ; ego = trader
 
-  report (xcor = [xcor] of base) and (ycor = [ycor] of base) ; if the ship arrived at the centre of the base patch
-
-end
-
-to-report is-in-destination ; ego = ship
-
-  report (xcor = [xcor] of destination) and (ycor = [ycor] of destination) ; if the ship arrived at the centre of the destination patch
+  report (xcor = [xcor] of base) and (ycor = [ycor] of base) ; if the trader arrived at the centre of the base patch
 
 end
 
-to unload-cargo ; ego = ship
+to-report is-in-destination ; ego = trader
 
-  let thisShip self
+  report (xcor = [xcor] of destination) and (ycor = [ycor] of destination) ; if the trader arrived at the centre of the destination patch
+
+end
+
+to unload-cargo ; ego = trader
+
+  let thisTrader self
   let settlementHere one-of settlements-here
 
   ; unload cargo
-  ask settlementHere [ add-trade-effect [cargoValue] of thisShip ]
+  ask settlementHere [ add-trade-effect [cargoValue] of thisTrader ]
 
 end
 
-to load-cargo ; ego = ship
+to load-cargo ; ego = trader
 
   let settlementHere one-of settlements-here
 
@@ -458,7 +460,7 @@ end
 
 to paint-active-routes
 
-  ask ships
+  ask traders
   [
     foreach route
     [ ?1 ->
@@ -758,10 +760,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-63
-57
-235
-90
+107
+56
+279
+89
 numberOfSettlements
 numberOfSettlements
 0
@@ -773,9 +775,9 @@ NIL
 HORIZONTAL
 
 BUTTON
-11
+82
 15
-78
+149
 48
 Set up
 setup
@@ -843,10 +845,10 @@ X path cost in water
 HORIZONTAL
 
 BUTTON
-96
-16
-159
-49
+155
+15
+218
+48
 Go
 go
 NIL
@@ -860,10 +862,10 @@ NIL
 1
 
 BUTTON
-180
-16
-243
-49
+224
+15
+287
+48
 Go
 go
 T
@@ -916,7 +918,7 @@ settlementSizeDecayRate
 settlementSizeDecayRate
 0
 25
-5.0
+0.0
 0.01
 1
 % of sizeLevel
@@ -983,6 +985,17 @@ relativePathCostInPort
 1
 X path cost in water
 HORIZONTAL
+
+INPUTBOX
+12
+15
+73
+75
+seed
+1.0
+1
+0
+Number
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1342,7 +1355,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.4
+NetLogo 6.2.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

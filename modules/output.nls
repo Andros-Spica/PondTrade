@@ -1,0 +1,94 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; OUTPUT.NLS
+;;; Purpose: Procedures for updating plots, displays, outputs, and computing model statistics.
+;;; Auto-generated documentation header.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to update-output
+
+  set coastalLandPatchesCount count patches with [isLand = true and any? neighbors with [isLand = false]]
+
+  let activatedTraders traders with [isActivated]
+
+  set traderCount count activatedTraders
+
+  set meanTraderCargoValue mean [cargoValue] of activatedTraders
+  set minTraderCargoValue min [cargoValue] of activatedTraders
+  set maxTraderCargoValue max [cargoValue] of activatedTraders
+
+  set minSettlementSize min [sizeLevel] of settlements
+  set maxSettlementSize max [sizeLevel] of settlements
+  set mainHub max-one-of settlements [sizeLevel]
+
+  set meanTotalPathCostOfActiveRoutes mean [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of activatedTraders
+  set minTotalPathCostOfActiveRoutes min [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of activatedTraders
+  set maxTotalPathCostOfActiveRoutes max [sum (map [ ?1 -> [pathCost] of ?1 ] route)] of activatedTraders
+
+  set meanRedTrait mean [item 0 culturalVector] of settlements
+  set stdDevRedTrait standard-deviation [item 0 culturalVector] of settlements
+  set modesRedTrait modes [ round (item 0 culturalVector) ] of settlements
+  set meanGreenTrait mean [item 1 culturalVector] of settlements
+  set stdDevGreenTrait standard-deviation [item 1 culturalVector] of settlements
+  set modesGreenTrait modes [ round (item 1 culturalVector) ] of settlements
+  set meanBlueTrait mean [item 2 culturalVector] of settlements
+  set stdDevBlueTrait standard-deviation [item 2 culturalVector] of settlements
+  set modesBlueTrait modes [ round (item 2 culturalVector) ] of settlements
+
+  set meanLandTechTrait mean [item 3 culturalVector] of settlements
+  set stdDevLandTechTrait standard-deviation [item 3 culturalVector] of settlements
+  set modesLandTechTrait modes [ round (relativePathCostInLand + item 3 culturalVector) ] of settlements
+  set meanPortTechTrait mean [item 4 culturalVector] of settlements
+  set stdDevPortTechTrait standard-deviation [item 4 culturalVector] of settlements
+  set modesPortTechTrait modes [ round (relativePathCostInPort + item 4 culturalVector) ] of settlements
+
+  set meanSizeDecayTrait mean [item 5 culturalVector] of settlements
+  set stdDevSizeDecayTrait standard-deviation [item 5 culturalVector] of settlements
+  set modesSizeDecayTrait modes [ round (item 5 culturalVector) ] of settlements
+  set meanStockDecayTrait mean [item 6 culturalVector] of settlements
+  set stdDevStockDecayTrait standard-deviation [item 6 culturalVector] of settlements
+  set modesStockDecayTrait modes [ round (item 6 culturalVector) ] of settlements
+  set meanProductionTrait mean [item 7 culturalVector] of settlements
+  set stdDevProductionTrait standard-deviation [item 7 culturalVector] of settlements
+  set modesProductionTrait modes [ round (item 7 culturalVector) ] of settlements
+
+  set meanFreqOverQualTrait mean [item 8 culturalVector] of settlements
+  set stdDevFreqOverQualTrait standard-deviation [item 8 culturalVector] of settlements
+  set modesFreqOverQualTrait modes [ round (item 8 culturalVector) ] of settlements
+  set meanTransmissionTrait mean [item 9 culturalVector] of settlements
+  set stdDevTransmissionTrait standard-deviation [item 9 culturalVector] of settlements
+  set modesTransmissionTrait modes [ round (item 9 culturalVector) ] of settlements
+  set meanMutationTrait mean [item 10 culturalVector] of settlements
+  set stdDevMutationTrait standard-deviation [item 10 culturalVector] of settlements
+  set modesMutationTrait modes [ round (item 10 culturalVector) ] of settlements
+
+end
+
+to paint-terrain ; ego = patch
+
+  ifelse (isLand = false)
+  [ set pcolor 106 ] ; blue for water
+  [ set pcolor 54 ] ; green for land
+
+end
+
+to update-display
+
+  paint-routes
+  paint-active-routes
+
+  ask settlements
+  [
+    set hidden? not showSettlements
+    ; scale the size of settlements according to their dynamic free-scaled sizeLevel
+    set size 1 + (sizeLevel / maxSettlementSize) * 9
+    set color rgb (item 0 culturalVector) (item 1 culturalVector) (item 2 culturalVector)
+  ]
+
+  ask traders
+  [
+    ifelse (isActivated)
+    [ set hidden? false ]
+    [ set hidden? true ]
+  ]
+
+end

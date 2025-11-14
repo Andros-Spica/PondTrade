@@ -3,7 +3,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;  The PondTrade model
-;;  Copyright (C) 2018 Andreas Angourakis (andros.spica@gmail.com)
+;;  Copyright (C) 2022 Andreas Angourakis (andros.spica@gmail.com)
 ;;
 ;;  This program is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 ;;;;;;;;;;;;;;;;;
 
 breed [ settlements settlement ]
-breed [ ships ship ]
+breed [ traders trader ]
 ; agent types (breeds) are created with this structure: 'breed [ name-plural name-singular ]'
 
 ;;;;;;;;;;;;;;;;;
@@ -32,7 +32,7 @@ breed [ ships ship ]
 
 settlements-own [ sizeLevel ]
 
-ships-own [ base ]
+traders-own [ base ]
 
 patches-own [ isLand ]
 ; just like with patches, custom agent breeds can also have their specific variables
@@ -45,11 +45,14 @@ to setup
 
   clear-all
 
+  ; set the random seed so we can reproduce the same experiment
+  random-seed seed
+
   create-map
 
   create-coastal-settlements
 
-  create-ships-per-settlement
+  create-traders-per-settlement
 
   update-display
 
@@ -64,15 +67,14 @@ to create-map
 
   let minDistOfLandToCenter round ((pondSize / 100) * halfSmallerDimension)
 
+  let coastThreshold minDistOfLandToCenter ; defaults to the basic value
+
+  ;; add noise to coast line
+  ; set general noise range depending on UI's coastalNoiseLevel and the size of world
+  let noiseRange (halfSmallerDimension * coastalNoiseLevel / 100)
+
   ask patches
   [
-
-    let coastThreshold minDistOfLandToCenter ; defaults to the basic value
-
-    ;; add noise to coast line
-    ; set general noise range depending on UI's coastalNoiseLevel and the size of world
-    let noiseRange (halfSmallerDimension * coastalNoiseLevel / 100)
-
     ; noiseType is specified with the chooser in the UI
     if (noiseType = "uniform")
     [
@@ -168,12 +170,12 @@ to create-coastal-settlements
 
 end
 
-to create-ships-per-settlement
+to create-traders-per-settlement
 
   ask settlements
   [
     let thisSettlement self ; to avoid the confusion of nested agent queries
-    hatch-ships round sizeLevel ; use the sizeLevel variable as the number of ships based in the settlement
+    hatch-traders round sizeLevel ; use the sizeLevel variable as the number of traders based in the settlement
     [
       set base thisSettlement
 
@@ -371,6 +373,17 @@ Display options
 14
 0.0
 1
+
+INPUTBOX
+105
+13
+163
+73
+seed
+0.0
+1
+0
+Number
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -730,7 +743,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.4
+NetLogo 6.2.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

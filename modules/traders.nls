@@ -1,0 +1,189 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; TRADERS.NLS
+;;; Purpose: Procedures for trader creation, activation, movement, and trading logic.
+;;; Auto-generated documentation header.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to setup-trader [ baseSettlement ]
+
+  set base baseSettlement
+  set isActivated true
+
+  ; give meaningful display related to base
+  set shape "sailboat side" ; import this shape from the library (Tools > Shape editor > import from library)
+  set color [color] of base
+  set size 3
+
+  choose-destination
+
+end
+
+to update-traders
+
+  let activeTraders traders with [isActivated]
+  let tradersInBase activeTraders with [is-in-base]
+  let tradersInDestination activeTraders with [is-in-destination]
+
+  ; UPDATE LAST POSITION
+  ask activeTraders
+  [
+    ; update lastPosition if in a patch centre
+    if ((xcor = [pxcor] of patch-here) and (ycor = [pycor] of patch-here))
+    [
+      set lastPosition patch-here
+    ]
+  ]
+
+  ; UNLOAD
+  ask (turtle-set tradersInBase tradersInDestination) with [cargoValue > 0]
+  [
+    ; unload cargo (changes sizeLevel)
+    unload-cargo
+  ]
+
+  ; CHECK if the trader can be sustained when in the base
+  ask tradersInBase
+  [
+    if ([potentialNumberOfTraders < currentNumberOfTraders] of base)
+    [
+      ; the current number of traders cannot be sustained
+      set isActivated false
+      ; update currentNumberOfTraders of base
+      ask base [ set currentNumberOfTraders get-current-number-of-traders ]
+    ]
+  ]
+
+  set activeTraders traders with [isActivated] ; update active traders
+  set tradersInBase tradersInBase with [isActivated] ; update traders in base
+
+  ; LOAD
+  ask (turtle-set tradersInBase tradersInDestination)
+  [
+    ; load cargo (changes stock)
+    load-cargo
+  ]
+
+  ; CHOOSE DESTINATION
+  ask tradersInBase with [cargoValue > 0]
+  [
+    ; update the destination whenever in the base settlement and there is cargo to transport
+    choose-destination
+  ]
+
+  ; FIND DIRECTION in route
+  ask (turtle-set tradersInBase tradersInDestination)
+  [
+    find-direction
+  ]
+
+  ; MOVE towards the next position in the route
+  ask activeTraders with [cargoValue > 0]
+  [
+    ; move following the route when there is cargo to transport
+    move-to-destination
+  ]
+
+end
+
+to choose-destination ; ego = trader
+
+  let thisTrader self
+
+  ; get routes connecting the base settlement
+  let routesFromBase get-routes-to-settlement [base] of thisTrader
+
+  ; order these routes by benefit/cost ratio
+  set routesFromBase sort-by [ [?1 ?2] -> benefit-cost-of-route ?1 thisTrader > benefit-cost-of-route ?2 thisTrader ] routesFromBase
+
+  ; print the options available
+;  foreach routesFromBase
+;  [
+;    print "==============================================================="
+;    print "route between:"
+;    print [who] of get-origin-and-destination ?
+;    print "has the benefit-cost ratio of:"
+;    print benefit-cost-of-route ?
+;  ]
+;  print "-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x"
+
+  ; select the one with higher benefit/cost ratio
+  set route first routesFromBase
+
+  ; get the settlement of destination
+  set destination one-of (get-origin-and-destination route) with [who != [who] of ([base] of thisTrader)]
+
+end
+
+to find-direction ; ego = trader
+
+  ; find where in the route list is the trader
+  let currentPosition position lastPosition route
+
+  ; set direction if in a settlement
+  ifelse (currentPosition = 0) ; in the first extreme of the route list
+  [
+    ; move in the route list towards larger index numbers
+    set direction 1
+  ]
+  [
+    if (currentPosition = (length route - 1)) ; in the last extreme of the route list
+    [
+      ; move in the route list towards smaller index numbers
+      set direction -1
+    ]
+  ]
+  ; else the trader is in route to either the base or the destination
+
+end
+
+to move-to-destination ; ego = trader
+
+  ; find where in the route list is the trader
+  let currentPosition position lastPosition route
+
+  ; move through the route following direction
+  let targetPatch item (currentPosition + direction) route
+  ;move-to targetPatch ; constant travel time (1 patch per tick)
+  facexy ([pxcor] of targetPatch) ([pycor] of targetPatch)
+
+  forward min (
+    list
+    (1 / get-path-cost patch-here self) ; the maximum distance in a tick in the current patch
+    (distancexy ([pxcor] of targetPatch) ([pycor] of targetPatch)) ; the distance to the target patch
+    )
+
+end
+
+to-report is-in-base ; ego = trader
+
+  report (xcor = [xcor] of base) and (ycor = [ycor] of base) ; if the trader arrived at the centre of the base patch
+
+end
+
+to-report is-in-destination ; ego = trader
+
+  report (xcor = [xcor] of destination) and (ycor = [ycor] of destination) ; if the trader arrived at the centre of the destination patch
+
+end
+
+to unload-cargo ; ego = trader
+
+  let thisTrader self
+  let settlementHere one-of settlements-here
+
+  ; unload cargo
+  ask settlementHere [ add-trade-effect thisTrader ]
+
+end
+
+to load-cargo ; ego = trader
+
+  let settlementHere one-of settlements-here
+
+  ; load cargo
+  set cargoValue [stock] of settlementHere
+  ask settlementHere [ set stock 0 ] ; empty the settlement stock
+
+  set culturalSample [culturalVector] of settlementHere
+
+end

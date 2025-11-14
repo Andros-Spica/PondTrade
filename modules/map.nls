@@ -1,0 +1,80 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; MAP.NLS
+;;; Purpose: Map and terrain generation, including coastline smoothing and path cost assignment.
+;;; Auto-generated documentation header.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to create-map
+
+  let centralPatch patch (min-pxcor + (floor world-width / 2)) (min-pycor + (floor world-height / 2))
+
+  let halfSmallerDimension (world-width / 2)
+  if (world-width > world-height) [ set halfSmallerDimension (world-height / 2) ]
+
+  let minDistOfLandToCenter round ((pondSize / 100) * halfSmallerDimension)
+
+  let coastThreshold minDistOfLandToCenter ; defaults to the basic value
+
+  ;; add noise to coast line
+  ; set general noise range depending on UI's coastalNoiseLevel and the size of world
+  let noiseRange (halfSmallerDimension * coastalNoiseLevel / 100)
+
+  ask patches
+  [
+    ; noiseType is specified with the chooser in the UI
+    if (noiseType = "uniform")
+    [
+      ; adds a random amount from a uniform distribution with mean minDistOfLandToCenter
+      set noiseRange (random-float noiseRange) - (noiseRange / 2)
+      set coastThreshold minDistOfLandToCenter + noiseRange
+    ]
+    if (noiseType = "normal")
+    [
+      ; adds a random amount from a normal distribution with mean minDistOfLandToCenter
+      set coastThreshold random-normal minDistOfLandToCenter (halfSmallerDimension * coastalNoiseLevel / 100)
+    ]
+
+    ifelse (distance centralPatch < coastThreshold)
+    [
+      set isLand false
+    ]
+    [
+      set isLand true
+    ]
+  ]
+
+  smooth-coast-line
+
+  ask patches [ paint-terrain ]
+
+end
+
+to smooth-coast-line
+
+  ; smooth coast line
+  repeat smoothIterations
+  [
+    ask patches
+    [
+      ifelse (isLand = false)
+      [
+        ; water patch
+        ; consider ratios instead of absolute numbers to avoid having isolated water bodies adjacent to the world limits (less than 8 neighbors)
+        if (count neighbors with [isLand = true] / count neighbors >= coastLineSmoothThreshold / 8)
+        [
+          ; water patch has a certain number of land neighbors
+          set isLand true ; converted to land
+        ]
+      ]
+      [
+        ; land patch
+        if (count neighbors with [isLand = false] / count neighbors >= coastLineSmoothThreshold / 8)
+        [
+          ; land patch has a certain number of water neighbors
+          set isLand false ; converted to water
+        ]
+      ]
+    ]
+  ]
+
+end
